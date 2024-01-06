@@ -1,0 +1,38 @@
+{
+  "name": "parser",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "parser/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/parser"
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs parser {args.ver} {args.tag}",
+      "dependsOn": ["build"]
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../coverage/parser"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "prepare-conformance": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "go run textproto-to-json",
+        "cwd": "parser/src/lib/conformance"
+      }
+    }
+  },
+  "tags": []
+}
