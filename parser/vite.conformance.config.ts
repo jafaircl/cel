@@ -51,10 +51,10 @@ export default defineConfig({
       dir: '../node_modules/.vitest',
     },
     environment: 'node',
-    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: [
+    include: [
       'src/lib/conformance/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
     ],
+    exclude: [],
 
     reporters: ['default'],
     coverage: {

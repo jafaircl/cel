@@ -19,7 +19,8 @@
       "executor": "@nx/vite:test",
       "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "reportsDirectory": "../coverage/parser"
+        "reportsDirectory": "../coverage/parser",
+        "config": "parser/vite.config.ts"
       }
     },
     "lint": {
@@ -31,6 +32,14 @@
       "options": {
         "command": "go run textproto-to-json",
         "cwd": "parser/src/lib/conformance"
+      }
+    },
+    "conformance": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../coverage/parser/conformance",
+        "config": "parser/vite.conformance.config.ts"
       }
     }
   },
