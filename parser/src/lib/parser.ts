@@ -4,6 +4,13 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { NullValue } from '@bufbuild/protobuf';
 import {
+  parseBytesConstant,
+  parseDoubleConstant,
+  parseIntConstant,
+  parseStringConstant,
+  parseUintConstant,
+} from './constants';
+import {
   BoolFalseContext,
   BoolTrueContext,
   BytesContext,
@@ -23,7 +30,6 @@ import {
   UintContext,
 } from './gen/CELParser';
 import GeneratedCelVisitor from './gen/CELVisitor';
-import { parseBytes, parseInt64, parseString } from './util';
 
 export class CELParser extends GeneratedCelVisitor<Expr> {
   #ERROR = new Constant({
@@ -113,12 +119,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitInt = (ctx: IntContext) => {
     // TODO: ensure context not null
-    const constant = new Constant({
-      constantKind: {
-        case: 'int64Value',
-        value: parseInt64(ctx.getText()),
-      },
-    });
+    const constant = parseIntConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
       id: this.#exprId++,
@@ -131,12 +132,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitUint = (ctx: UintContext) => {
     // TODO: ensure context not null
-    const constant = new Constant({
-      constantKind: {
-        case: 'uint64Value',
-        value: parseInt64(ctx.getText().slice(0, -1)),
-      },
-    });
+    const constant = parseUintConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
       id: this.#exprId++,
@@ -149,12 +145,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitDouble = (ctx: DoubleContext) => {
     // TODO: ensure context not null
-    const constant = new Constant({
-      constantKind: {
-        case: 'doubleValue',
-        value: parseFloat(ctx.getText()),
-      },
-    });
+    const constant = parseDoubleConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
       id: this.#exprId++,
@@ -167,14 +158,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitString = (ctx: StringContext) => {
     // TODO: ensure context not null
-    const constant = new Constant({
-      constantKind: {
-        case: 'stringValue',
-        // Strings are formatted like `'...'` so we need to remove the quotes
-        // from the string before parsing
-        value: parseString(ctx.getText().slice(1, -1)),
-      },
-    });
+    const constant = parseStringConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
       id: this.#exprId++,
@@ -187,14 +171,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitBytes = (ctx: BytesContext) => {
     // TODO: ensure context not null
-    const constant = new Constant({
-      constantKind: {
-        case: 'bytesValue',
-        // Bytes are formatted like `b'...'` so we need to remove the `b` and
-        // the quotes from the string before parsing
-        value: parseBytes(ctx.getText().slice(2, -1)),
-      },
-    });
+    const constant = parseBytesConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
       id: this.#exprId++,
