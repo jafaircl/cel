@@ -24,25 +24,16 @@ export const ERROR = '<<error>>';
  * @returns a Constant representing the parsed integer
  */
 export function parseIntConstant(text: string) {
-  let base = 10;
-  if (text.startsWith('-0x')) {
-    base = 16;
-    // Strip off the sign and prefix.
-    text = text.substring(3);
-    // Add the sign back.
-    text = '-' + text;
-  } else if (text.startsWith('0x')) {
-    base = 16;
-    text = text.substring(2);
-    if (text.startsWith('-')) {
-      // While the lexer/parser should never present such a literal, this is here for safety as
-      // Long.parseLong would accept it.
-      throw new ParseException('Integer literal is malformed', 0);
-    }
+  const isNegative = text.startsWith('-');
+  if (isNegative) {
+    text = text.substring(1);
   }
   let value: bigint;
   try {
-    value = BigInt(parseInt(text, base));
+    value = BigInt(text);
+    if (isNegative) {
+      value = -value;
+    }
   } catch (e) {
     throw new ParseException(
       e instanceof Error ? e.message : 'Integer literal is malformed',
@@ -64,7 +55,6 @@ export function parseIntConstant(text: string) {
  * @returns a Constant representing the parsed unsigned integer
  */
 export function parseUintConstant(text: string) {
-  let base = 10;
   if (!text.endsWith('u') && !text.endsWith('U')) {
     throw new ParseException(
       "Unsigned integer literal is missing trailing 'u' suffix",
@@ -72,13 +62,17 @@ export function parseUintConstant(text: string) {
     );
   }
   text = text.substring(0, text.length - 1);
-  if (text.startsWith('0x')) {
-    base = 16;
-    text = text.substring(2);
+
+  const isNegative = text.startsWith('-');
+  if (isNegative) {
+    text = text.substring(1);
   }
   let value: bigint;
   try {
-    value = BigInt(parseInt(text, base));
+    value = BigInt(text);
+    if (isNegative) {
+      value = -value;
+    }
   } catch (e) {
     throw new ParseException(
       e instanceof Error ? e.message : 'Unsigned integer literal is malformed',
@@ -104,6 +98,9 @@ export function parseDoubleConstant(text: string) {
 
   try {
     value = parseFloat(text);
+    if (isNaN(value)) {
+      throw new ParseException('Double literal is malformed', 0);
+    }
   } catch (e) {
     throw new ParseException(
       e instanceof Error ? e.message : 'Double literal is malformed',
@@ -119,17 +116,17 @@ export function parseDoubleConstant(text: string) {
 }
 
 function nextInts(
-  iterator: IterableIterator<number | string>,
+  iterator: IterableIterator<string>,
   count: number,
   scratch: number[]
 ): boolean {
   if (count > scratch.length) {
-    throw new Error('Count exceeds scratch array length');
+    throw new ParseException('Count exceeds scratch array length', 0);
   }
   let index = 0;
   let next = iterator.next();
   while (!next.done && index < count) {
-    scratch[index++] = Number(next.value);
+    scratch[index++] = next.value.codePointAt(0)!;
     next = iterator.next();
   }
   return index === count;
@@ -171,15 +168,15 @@ function isDigit(codePoint: number): boolean {
   return codePoint >= '0'.charCodeAt(0) && codePoint <= '9'.charCodeAt(0);
 }
 
-// function toLowerCase(codePoint: number): number {
-//   return codePoint >= 'A'.charCodeAt(0) && codePoint <= 'Z'.charCodeAt(0)
-//     ? codePoint - 'A'.charCodeAt(0) + 'a'.charCodeAt(0)
-//     : codePoint;
-// }
+function toLowerCase(codePoint: number): number {
+  return codePoint >= 'A'.charCodeAt(0) && codePoint <= 'Z'.charCodeAt(0)
+    ? codePoint - 'A'.charCodeAt(0) + 'a'.charCodeAt(0)
+    : codePoint;
+}
 
 function checkArgument(condition: boolean): void {
   if (!condition) {
-    throw new Error('Invalid argument');
+    throw new ParseException('Invalid argument', 0);
   }
 }
 
@@ -188,7 +185,10 @@ function checkForClosingQuote(text: string, quote: string): void {
     return;
   }
   if (text.length < quote.length) {
-    throw new Error(`String literal missing terminating quote ${quote}`);
+    throw new ParseException(
+      `String literal missing terminating quote ${quote}`,
+      0
+    );
   }
   let position = 0;
   let isClosed = false;
@@ -205,34 +205,53 @@ function checkForClosingQuote(text: string, quote: string): void {
     position++;
   }
   if (!isClosed) {
-    throw new Error(
-      `String literal contains unescaped terminating quote ${quote}`
+    throw new ParseException(
+      `String literal contains unescaped terminating quote ${quote}`,
+      position
     );
   }
 }
 
-function unhex(value: number | number[], nextValue?: number): number {
-  if (Array.isArray(value)) {
-    let result = 0;
-    for (let index = 0; index < value.length; index++) {
-      result = unhex(result, value[index]);
-    }
-    return result;
+function unhex(value: number, nextValue: number): number {
+  if (isDigit(nextValue)) {
+    return value * 16 + (nextValue - '0'.charCodeAt(0));
   } else {
-    if (isDigit(nextValue!)) {
-      return value * 16 + (nextValue! - '0'.charCodeAt(0));
-    } else {
-      return (
-        value * 16 +
-        (nextValue!.toString().toLowerCase().charCodeAt(0) -
-          'a'.charCodeAt(0) +
-          10)
-      );
-    }
+    return value * 16 + (toLowerCase(nextValue) - 'a'.charCodeAt(0) + 10);
   }
 }
 
-class ByteString {
+function unhexFromArray(codePoints: number[], length: number): number {
+  let value = 0;
+
+  for (let index = 0; index < length; index++) {
+    value = unhex(value, codePoints[index]);
+  }
+
+  return value;
+}
+
+// function unhex(value: number | number[], nextValue?: number): number {
+//   if (Array.isArray(value)) {
+//     let result = 0;
+//     for (let index = 0; index < value.length; index++) {
+//       result = unhex(result, value[index]);
+//     }
+//     return result;
+//   } else {
+//     if (isDigit(nextValue!)) {
+//       return value * 16 + (nextValue! - '0'.charCodeAt(0));
+//     } else {
+//       return (
+//         value * 16 +
+//         (nextValue!.toString().toLowerCase().charCodeAt(0) -
+//           'a'.charCodeAt(0) +
+//           10)
+//       );
+//     }
+//   }
+// }
+
+export class ByteString {
   private readonly data: Uint8Array;
 
   private constructor(data: Uint8Array) {
@@ -275,7 +294,7 @@ class Output {
   }
 }
 
-class StringBuilder {
+export class StringBuilder {
   private value: string;
 
   constructor(initialValue: string = '') {
@@ -314,7 +333,7 @@ class DecodeByteStringBuffer implements DecodeBuffer<ByteString> {
 
   appendCodePoint(codePoint: number): void {
     if (codePoint < MIN_CODE_POINT || codePoint > MAX_CODE_POINT) {
-      throw new Error('Invalid code point');
+      throw new ParseException('Invalid code point', 0);
     }
 
     if (codePoint < 0x80) {
@@ -352,7 +371,7 @@ class DecodeStringBuffer implements DecodeBuffer<string> {
 
   appendCodePoint(codePoint: number): void {
     if (codePoint < MIN_CODE_POINT || codePoint > MAX_CODE_POINT) {
-      throw new Error('Invalid code point');
+      throw new ParseException('Invalid code point', 0);
     }
     this.builder.appendCodePoint(codePoint);
   }
@@ -505,7 +524,7 @@ function decodeString<T>(
                 seqOffset
               );
             }
-            const value = unhex(scratchCodePoints, 2);
+            const value = unhexFromArray(scratchCodePoints, 2);
             buffer.appendByte(value);
             offset += 2;
           }
@@ -531,7 +550,7 @@ function decodeString<T>(
                 seqOffset
               );
             }
-            const value = unhex(scratchCodePoints, 4);
+            const value = unhexFromArray(scratchCodePoints, 4);
             if (
               value < MIN_CODE_POINT ||
               value > MAX_CODE_POINT ||
@@ -564,7 +583,7 @@ function decodeString<T>(
                 seqOffset
               );
             }
-            const value = unhex(scratchCodePoints, 8);
+            const value = unhexFromArray(scratchCodePoints, 8);
             if (
               value < MIN_CODE_POINT ||
               value > MAX_CODE_POINT ||
