@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "generate-parser": "antlr4 -Dlanguage=TypeScript parser/src/lib/gen/CEL.g4 -visitor"
+    "generate-parser": "antlr4 -Dlanguage=TypeScript parser/src/lib/gen/CEL.g4 -visitor",
+    "prepare-conformance": "npx nx prepare-conformance parser",
+    "test:conformance": "npx nx conformance parser"
   },
   "private": true,
   "dependencies": {

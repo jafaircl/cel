@@ -53,7 +53,10 @@ func json_testfile(testFile *spb.SimpleTestFile) {
 }
 
 func main() {
-	arr := []string{filepath.Join("testdata", "basic.textproto")}
+	arr := []string{
+		filepath.Join("testdata", "basic.textproto"),
+		filepath.Join("testdata", "comparisons.textproto"),
+	}
 	for i := 0; i < len(arr); i++ { 
 		input_file := arr[i]
 		fmt.Fprintf(os.Stderr, "Writing %v\n", input_file)

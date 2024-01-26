@@ -1,15 +1,24 @@
+import { ErrorSet } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
 import {
   Constant,
   Expr,
+  Expr_CreateList,
+  Expr_CreateStruct,
+  Expr_CreateStruct_Entry,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
-import { NullValue } from '@bufbuild/protobuf';
+import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
+import { Any, NullValue, StringValue } from '@bufbuild/protobuf';
+import { ParserRuleContext } from 'antlr4';
+import { ExpressionBalancer } from './balancer';
 import {
+  RESERVED_IDS,
   parseBytesConstant,
   parseDoubleConstant,
   parseIntConstant,
   parseStringConstant,
   parseUintConstant,
 } from './constants';
+import { NullException } from './exceptions';
 import {
   BoolFalseContext,
   BoolTrueContext,
@@ -18,8 +27,13 @@ import {
   ConditionalAndContext,
   ConditionalOrContext,
   ConstantLiteralContext,
+  CreateListContext,
+  CreateMapContext,
+  CreateMessageContext,
   DoubleContext,
   ExprContext,
+  ExprListContext,
+  IdentOrGlobalCallContext,
   IntContext,
   MemberExprContext,
   NullContext,
@@ -30,6 +44,11 @@ import {
   UintContext,
 } from './gen/CELParser';
 import GeneratedCelVisitor from './gen/CELVisitor';
+import { Operator, getOperatorFromText } from './operator';
+
+function isNil(value: unknown): value is null | undefined {
+  return value === null || value === undefined;
+}
 
 export class CELParser extends GeneratedCelVisitor<Expr> {
   #ERROR = new Constant({
@@ -38,87 +57,379 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       value: '<<error>>',
     },
   });
-  #exprId = BigInt(0);
+  #exprId = BigInt(1);
+  public readonly errors = new ErrorSet();
 
-  constructor(readonly input?: Record<string, unknown>) {
+  constructor() {
     super();
   }
 
   override visitStart = (ctx: StartContext) => {
-    // TODO: ensure context not null
-    return this.visit(ctx.expr());
+    this._checkNotNil(ctx);
+    if (isNil(ctx._e)) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no expression context',
+        })
+      );
+    }
+    return this.visit(ctx._e);
   };
 
   override visitExpr = (ctx: ExprContext) => {
-    // TODO: ensure context not null
-    // TODO: ensure context.e is not null
-    const condition = this.visit(ctx._e);
-    if (ctx._op !== null) {
-      // TODO: handle this case
+    this._checkNotNil(ctx);
+    if (isNil(ctx._e)) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no expression context',
+        })
+      );
+    }
+    let condition = this.visit(ctx._e);
+    if (!isNil(ctx._op)) {
+      if (isNil(ctx._e1) || isNil(ctx._e2)) {
+        return this._ensureErrorsExist(
+          new Status({
+            code: 1,
+            message: 'no conditional context',
+          })
+        );
+      }
+      condition = new Expr({
+        id: this.#exprId++,
+        exprKind: {
+          case: 'callExpr',
+          value: {
+            function: Operator.CONDITIONAL,
+            args: [condition, this.visit(ctx._e1), this.visit(ctx._e2)],
+          },
+        },
+      });
     }
     return condition;
   };
 
   override visitConditionalOr = (ctx: ConditionalOrContext) => {
-    // TODO: ensure context not null
-    // TODO: ensure context.e is not null
+    this._checkNotNil(ctx);
+    if (isNil(ctx._e)) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no conditionalor context',
+        })
+      );
+    }
     const conditionalOr = this.visit(ctx._e);
     if (!ctx._ops || ctx._ops.length === 0) {
       return conditionalOr;
     }
-    // TODO: handle other cases
-    return new Expr();
+    const balancer = new ExpressionBalancer(Operator.LOGICAL_OR, conditionalOr);
+    for (let i = 0; i < ctx._ops.length; i++) {
+      if (isNil(ctx._e1) || i >= ctx._e1.length) {
+        return this._reportError(ctx, "unexpected character, wanted '||'");
+      }
+      const term = this.visit(ctx._e1[i]);
+      balancer.add(term.id, term);
+    }
+    return balancer.balance();
   };
 
   override visitConditionalAnd = (ctx: ConditionalAndContext) => {
-    // TODO: ensure context not null
-    // TODO: ensure context.e is not null
+    this._checkNotNil(ctx);
+    if (isNil(ctx._e)) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no conditionaland context',
+        })
+      );
+    }
     const conditionalAnd = this.visit(ctx._e);
     if (!ctx._ops || ctx._ops.length === 0) {
       return conditionalAnd;
     }
-    // TODO: handle other cases
-    return new Expr();
+    const balancer = new ExpressionBalancer(
+      Operator.LOGICAL_AND,
+      conditionalAnd
+    );
+    for (let i = 0; i < ctx._ops.length; i++) {
+      if (isNil(ctx._e1) || i >= ctx._e1.length) {
+        return this._reportError(ctx, "unexpected character, wanted '&&'");
+      }
+      const term = this.visit(ctx._e1[i]);
+      balancer.add(term.id, term);
+    }
+    return balancer.balance();
   };
 
   override visitRelation = (ctx: RelationContext) => {
-    // TODO: ensure context not null
-    if (ctx.calc()) {
+    this._checkNotNil(ctx);
+    if (!isNil(ctx.calc())) {
       return this.visit(ctx.calc());
     }
-    // TODO: handle other cases
-    return new Expr();
+    if (
+      isNil(ctx.relation_list()) ||
+      ctx.relation_list().length === 0 ||
+      isNil(ctx._op)
+    ) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no relation context',
+        })
+      );
+    }
+    const operator = getOperatorFromText(ctx._op.text);
+    if (isNil(operator)) {
+      return this._reportError(ctx, 'operator not found');
+    }
+    const left = this.visit(ctx.relation(0));
+    const right = this.visit(ctx.relation(1));
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: operator,
+          args: [left, right],
+        },
+      },
+    });
   };
 
   override visitCalc = (ctx: CalcContext) => {
-    // TODO: ensure context not null
-    if (ctx.unary()) {
+    this._checkNotNil(ctx);
+    if (!isNil(ctx.unary())) {
       return this.visit(ctx.unary());
     }
-    // TODO: handle other cases
-    return new Expr();
+    if (
+      isNil(ctx.calc_list()) ||
+      ctx.calc_list().length === 0 ||
+      isNil(ctx._op)
+    ) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no calc context',
+        })
+      );
+    }
+    const operator = getOperatorFromText(ctx._op.text);
+    if (isNil(operator)) {
+      return this._reportError(ctx, 'operator not found');
+    }
+    const left = this.visit(ctx.calc(0));
+    const right = this.visit(ctx.calc(1));
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: operator,
+          args: [left, right],
+        },
+      },
+    });
   };
 
   override visitMemberExpr = (ctx: MemberExprContext) => {
-    // TODO: ensure context not null
-    // TODO: make sure context.member() is not null
+    this._checkNotNil(ctx);
+    if (isNil(ctx.member())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no member expr context',
+        })
+      );
+    }
     return this.visit(ctx.member());
   };
 
+  // TODO: visitLogicalNot
+  // TODO: visitNegate
+
   override visitPrimaryExpr = (ctx: PrimaryExprContext) => {
-    // TODO: ensure context not null
-    // TODO: make sure context.primary() is not null
+    this._checkNotNil(ctx);
+    if (isNil(ctx.primary())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no primary expr context',
+        })
+      );
+    }
     return this.visit(ctx.primary());
   };
 
+  // TODO: visitSelect
+  // TODO: visitMemberCall
+  // TODO: visitIndex
+
+  override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx._id)) {
+      // TODO: what to do here?
+      console.log('hey buddy');
+      return new Expr();
+    }
+    let id = ctx._id.text;
+    if (RESERVED_IDS.has(id)) {
+      return this._reportError(ctx, `reserved identifier: ${id}`);
+    }
+    if (!isNil(ctx._leadingDot)) {
+      id = `.${id}`;
+    }
+    if (isNil(ctx._op)) {
+      return new Expr({
+        id: this.#exprId++,
+        exprKind: {
+          case: 'identExpr',
+          value: {
+            name: id,
+          },
+        },
+      });
+    }
+    const args = this.visitExprList(ctx.exprList());
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: id,
+          args: (args.exprKind.value as Expr_CreateList).elements,
+        },
+      },
+    });
+  };
+
+  override visitExprList = (ctx: ExprListContext) => {
+    this._checkNotNil(ctx);
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements: ctx.expr_list().map((expr) => this.visit(expr)),
+        },
+      },
+    });
+  };
+
+  override visitCreateMap = (ctx: CreateMapContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx._entries)) {
+      return new Expr({
+        id: this.#exprId++,
+        exprKind: {
+          case: 'structExpr',
+          value: {},
+        },
+      });
+    }
+    const createStruct = new Expr_CreateStruct();
+    for (let i = 0; i < ctx._entries._keys.length; i++) {
+      const key = this.visit(ctx._entries._keys[i]._e);
+      const value = this.visit(ctx._entries._values[i]._e);
+      const entry = new Expr_CreateStruct_Entry({
+        id: this.#exprId++,
+        keyKind: {
+          case: 'mapKey',
+          value: key,
+        },
+        value,
+      });
+      createStruct.entries.push(entry);
+    }
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'structExpr',
+        value: createStruct,
+      },
+    });
+  };
+
+  override visitCreateList = (ctx: CreateListContext) => {
+    this._checkNotNil(ctx);
+    if (
+      isNil(ctx._elems) ||
+      isNil(ctx._elems._elems) ||
+      ctx._elems._elems.length === 0
+    ) {
+      return new Expr({
+        id: this.#exprId++,
+        exprKind: {
+          case: 'listExpr',
+          value: {
+            elements: [],
+          },
+        },
+      });
+    }
+    const elements: Expr[] = [];
+    for (const elem of ctx._elems._elems) {
+      elements.push(this.visit(elem._e));
+    }
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements,
+        },
+      },
+    });
+  };
+
+  override visitCreateMessage = (ctx: CreateMessageContext) => {
+    this._checkNotNil(ctx);
+    let messageName = ctx._ids.map((id) => id.text).join('.');
+    if (!isNil(ctx._leadingDot)) {
+      messageName = `.${messageName}`;
+    }
+    if (messageName === '') {
+      return this._reportError(ctx, 'message name is empty');
+    }
+    const createStruct = new Expr_CreateStruct({ messageName });
+    for (let i = 0; i < ctx._entries?._fields.length ?? 0; i++) {
+      const value = this.visit(ctx._entries._values[i]);
+      const entry = new Expr_CreateStruct_Entry({
+        id: this.#exprId++,
+        keyKind: {
+          case: 'fieldKey',
+          value: ctx._entries._fields[i].getText(),
+        },
+        value,
+      });
+      createStruct.entries.push(entry);
+    }
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'structExpr',
+        value: createStruct,
+      },
+    });
+  };
+
   override visitConstantLiteral = (ctx: ConstantLiteralContext) => {
-    // TODO: ensure context not null
-    // TODO: make sure context.literal() is not null
+    this._checkNotNil(ctx);
+    if (isNil(ctx.literal())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no literal context',
+        })
+      );
+    }
     return this.visit(ctx.literal());
   };
 
   override visitInt = (ctx: IntContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     const constant = parseIntConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
@@ -131,7 +442,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   override visitUint = (ctx: UintContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     const constant = parseUintConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
@@ -144,7 +455,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   override visitDouble = (ctx: DoubleContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     const constant = parseDoubleConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
@@ -157,7 +468,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   override visitString = (ctx: StringContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     const constant = parseStringConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
@@ -170,7 +481,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   override visitBytes = (ctx: BytesContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     const constant = parseBytesConstant(ctx.getText());
     // TODO: parse error handling
     return new Expr({
@@ -182,9 +493,8 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override visitBoolTrue = (ctx: BoolTrueContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     // TODO: ensure context.getText() is 'true'
     const constant = new Constant({
       constantKind: {
@@ -201,9 +511,8 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override visitBoolFalse = (ctx: BoolFalseContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     // TODO: ensure context.getText() is 'false'
     const constant = new Constant({
       constantKind: {
@@ -220,9 +529,8 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override visitNull = (ctx: NullContext) => {
-    // TODO: ensure context not null
+    this._checkNotNil(ctx);
     // TODO: ensure context.getText() is 'null'
     const constant = new Constant({
       constantKind: {
@@ -238,4 +546,33 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       },
     });
   };
+
+  private _checkNotNil(value: unknown, message?: string): asserts value {
+    if (isNil(value)) {
+      throw new NullException(message || 'value is nil');
+    }
+  }
+
+  private _ensureErrorsExist(status: Status) {
+    this.errors.errors.push(status);
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'constExpr',
+        value: this.#ERROR,
+      },
+    });
+  }
+
+  private _reportError(context: ParserRuleContext, message: string) {
+    return this._ensureErrorsExist(
+      new Status({
+        code: 1,
+        message,
+        details: [
+          Any.pack(StringValue.fromJson(JSON.stringify(context, null, 2))),
+        ],
+      })
+    );
+  }
 }

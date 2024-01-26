@@ -3,8 +3,10 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { runTest } from './runner';
 
-describe('basic', () => {
-  const file = readFileSync(join(__dirname, '..', 'testdata', 'basic.json'));
+describe('comparisons', () => {
+  const file = readFileSync(
+    join(__dirname, '..', 'testdata', 'comparisons.json')
+  );
   const testFile = SimpleTestFile.fromJsonString(file.toString(), {
     ignoreUnknownFields: true,
   });

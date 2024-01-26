@@ -717,3 +717,27 @@ export function parseBytesConstant(text: string) {
     },
   });
 }
+
+export const RESERVED_IDS = new Set([
+  'as',
+  'break',
+  'const',
+  'continue',
+  'else',
+  'false',
+  'for',
+  'function',
+  'if',
+  'import',
+  'in',
+  'let',
+  'loop',
+  'package',
+  'namespace',
+  'null',
+  'return',
+  'true',
+  'var',
+  'void',
+  'while',
+]);

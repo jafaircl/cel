@@ -6,3 +6,12 @@ export class ParseException extends Error {
     super(message);
   }
 }
+
+/**
+ * Signals that a null value was encountered unexpectedly while parsing.
+ */
+export class NullException extends Error {
+  constructor(public message: string) {
+    super(message);
+  }
+}
