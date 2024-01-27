@@ -25,11 +25,26 @@ export function runTest(testFile: SimpleTestFile) {
           test.resultMatcher.case === 'value' &&
           test.resultMatcher.value.kind.value
         ) {
+          class TestAllTypesForTest extends TestAllTypes {
+            static readonly typeName = 'TestAllTypes' as any;
+          }
+          //   if (test.name === 'eq_bool_not_null') {
+          //     console.log(
+          //       parse(
+          //         test.expr,
+          //         declarations,
+          //         [TestAllTypesForTest],
+          //         [],
+          //         bindings,
+          //         test.disableCheck === false
+          //       ).toJsonString({ prettySpaces: 2 })
+          //     );
+          //   }
           expect(
             parse(
               test.expr,
               declarations,
-              [TestAllTypes],
+              [TestAllTypesForTest],
               [],
               bindings,
               test.disableCheck === false

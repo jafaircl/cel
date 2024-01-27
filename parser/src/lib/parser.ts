@@ -39,6 +39,7 @@ import {
   NullContext,
   PrimaryExprContext,
   RelationContext,
+  SelectContext,
   StartContext,
   StringContext,
   UintContext,
@@ -263,7 +264,63 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     return this.visit(ctx.primary());
   };
 
-  // TODO: visitSelect
+  override visitSelect = (ctx: SelectContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx.member())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no member context',
+        })
+      );
+    }
+    const member = this.visit(ctx.member());
+    if (isNil(ctx._id)) {
+      return member;
+    }
+    const id = ctx._id.text;
+
+    if (!isNil(ctx._opt) && ctx._opt.text === '?') {
+      //   if (!options.enableOptionalSyntax()) {
+      //     return exprFactory.reportError(context.op, "unsupported syntax '.?'");
+      //   }
+      //   CelExpr.Builder exprBuilder = exprFactory.newExprBuilder(exprFactory.getPosition(context.op));
+      //   CelExpr.CelCall callExpr =
+      //       CelExpr.CelCall.newBuilder()
+      //           .setFunction(Operator.OPTIONAL_SELECT.getFunction())
+      //           .addArgs(
+      //               Arrays.asList(
+      //                   member,
+      //                   exprFactory
+      //                       .newExprBuilder(context)
+      //                       .setConstant(CelConstant.ofValue(id))
+      //                       .build()))
+      //           .build();
+      //   return exprBuilder.setCall(callExpr).build();
+      return new Expr({
+        id: this.#exprId++,
+        exprKind: {
+          case: 'callExpr',
+          value: {
+            function: Operator.OPTIONAL_SELECT,
+            args: [member],
+          },
+        },
+      });
+    }
+
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'selectExpr',
+        value: {
+          operand: member,
+          field: id,
+        },
+      },
+    });
+  };
+
   // TODO: visitMemberCall
   // TODO: visitIndex
 

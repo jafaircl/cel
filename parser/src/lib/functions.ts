@@ -188,6 +188,14 @@ export function equals(x: Value, y: Value): Value {
         },
       });
     default:
+      if (x.kind.case === 'nullValue' || y.kind.case === 'nullValue') {
+        return new Value({
+          kind: {
+            case: 'boolValue',
+            value: x.kind.case === y.kind.case && x.kind.value === y.kind.value,
+          },
+        });
+      }
       return new Value({
         kind: {
           case: 'boolValue',

@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 import {
   ErrorSet,
   ExprValue,
@@ -9,6 +10,7 @@ import {
   Expr_CreateList,
   Expr_CreateStruct,
   Expr_Ident,
+  Expr_Select,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import {
   MapValue_Entry,
@@ -16,12 +18,15 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
 import {
+  Any,
   BoolValue,
   BytesValue,
   DoubleValue,
+  FieldInfo,
   FloatValue,
   Int32Value,
   Int64Value,
+  NullValue,
   StringValue,
   UInt32Value,
   UInt64Value,
@@ -92,8 +97,61 @@ export class CELProgram {
         return this._evalStruct(expr.exprKind.value);
       case 'listExpr':
         return this._evalList(expr.exprKind.value);
+      case 'selectExpr':
+        return this._evalSelect(expr.exprKind.value);
       default:
         throw new Error(`Unknown expression kind: ${expr.exprKind.case}`);
+    }
+  }
+
+  private _evalSelect(select: Expr_Select): Value {
+    if (!select.operand) {
+      this.#errors.errors.push(
+        new Status({
+          code: 0,
+          message: 'missing operand',
+        })
+      );
+      return this.#ERROR;
+    }
+    const operand = this._evalInternal(select.operand);
+    switch (operand.kind.case) {
+      case 'objectValue':
+        const message = operand.kind.value.unpack(this.registry);
+        if (!message) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: 'cannot unpack message',
+            })
+          );
+          return this.#ERROR;
+        }
+        const field = message.getType().fields.findJsonName(select.field);
+        if (!field) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: `unknown field '${select.field}'`,
+            })
+          );
+          return this.#ERROR;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const value = (message as any)[field.name];
+        if (!value) {
+          return new Value({
+            kind: {
+              case: 'nullValue',
+              value: NullValue.NULL_VALUE,
+            },
+          });
+        }
+        // TODO: handle other types
+        return value;
+      default:
+        return this.#ERROR;
     }
   }
 
@@ -110,13 +168,15 @@ export class CELProgram {
         );
         return this.#ERROR;
       }
-      const fields: Record<string, unknown> = {};
+      const message = new messageType();
       for (const entry of struct.entries) {
-        fields[entry.keyKind.value as string] = this._evalInternal(
-          entry.value as Expr
-        ).kind.value;
+        const key = entry.keyKind.value as string;
+        const value = this._evalInternal(entry.value as Expr);
+        const field = messageType.fields
+          .list()
+          .find((f) => f.name === key) as FieldInfo;
+        message[field.jsonName] = value.kind.value;
       }
-      const message = new messageType(fields);
       switch (messageType.typeName) {
         case BoolValue.typeName:
           return new Value({
@@ -185,10 +245,7 @@ export class CELProgram {
           return new Value({
             kind: {
               case: 'objectValue',
-              value: {
-                typeUrl: messageType.typeName,
-                value: message.toBinary(),
-              },
+              value: Any.pack(message),
             },
           });
       }
