@@ -38,3 +38,7 @@ export function parseInt64(str: string) {
   }
   return BigInt(decoded);
 }
+
+export function isNil(value: unknown): value is null | undefined {
+  return value === null || value === undefined;
+}

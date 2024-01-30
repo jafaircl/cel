@@ -8,7 +8,7 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
 import { Any, NullValue, StringValue } from '@bufbuild/protobuf';
-import { ParserRuleContext } from 'antlr4';
+import { ParseTree, ParserRuleContext } from 'antlr4';
 import { ExpressionBalancer } from './balancer';
 import {
   RESERVED_IDS,
@@ -35,7 +35,10 @@ import {
   ExprListContext,
   IdentOrGlobalCallContext,
   IntContext,
+  MemberCallContext,
   MemberExprContext,
+  NegateContext,
+  NestedContext,
   NullContext,
   PrimaryExprContext,
   RelationContext,
@@ -46,10 +49,7 @@ import {
 } from './gen/CELParser';
 import GeneratedCelVisitor from './gen/CELVisitor';
 import { Operator, getOperatorFromText } from './operator';
-
-function isNil(value: unknown): value is null | undefined {
-  return value === null || value === undefined;
-}
+import { isNil } from './util';
 
 export class CELParser extends GeneratedCelVisitor<Expr> {
   #ERROR = new Constant({
@@ -64,6 +64,10 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   constructor() {
     super();
   }
+
+  override visit = (ctx: ParseTree) => {
+    return super.visit(this._unnest(ctx));
+  };
 
   override visitStart = (ctx: StartContext) => {
     this._checkNotNil(ctx);
@@ -249,7 +253,50 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   // TODO: visitLogicalNot
-  // TODO: visitNegate
+
+  override visitNegate = (ctx: NegateContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx.member())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no member context',
+        })
+      );
+    }
+    let expr = this.visit(ctx.member());
+    if (!isNil(ctx._ops)) {
+      if (ctx._ops.length % 2 === 0) {
+        return expr;
+      }
+      for (let index = ctx._ops.length; index > 0; --index) {
+        expr = new Expr({
+          id: this.#exprId++,
+          exprKind: {
+            case: 'callExpr',
+            value: {
+              function: Operator.NEGATE,
+              args: [expr],
+            },
+          },
+        });
+      }
+      return expr;
+    }
+    if (isNil(ctx._ops)) {
+      return this.visit(ctx.member());
+    }
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: Operator.NEGATE,
+          args: [expr],
+        },
+      },
+    });
+  };
 
   override visitPrimaryExpr = (ctx: PrimaryExprContext) => {
     this._checkNotNil(ctx);
@@ -321,14 +368,39 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     });
   };
 
-  // TODO: visitMemberCall
+  override visitMemberCall = (ctx: MemberCallContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx.member())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no member context',
+        })
+      );
+    }
+    const member = this.visit(ctx.member());
+    if (isNil(ctx._id)) {
+      return member;
+    }
+    const id = ctx._id.text;
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: id,
+          args: [member],
+        },
+      },
+    });
+  };
+
   // TODO: visitIndex
 
   override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext) => {
     this._checkNotNil(ctx);
     if (isNil(ctx._id)) {
       // TODO: what to do here?
-      console.log('hey buddy');
       return new Expr();
     }
     let id = ctx._id.text;
@@ -631,5 +703,64 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         ],
       })
     );
+  }
+
+  private _unnest(tree: ParseTree) {
+    while (tree != null) {
+      if (tree instanceof ExprContext) {
+        // conditionalOr op='?' conditionalOr : expr
+        if (tree._op != null) {
+          return tree;
+        }
+        // conditionalOr
+        tree = tree._e;
+      } else if (tree instanceof ConditionalOrContext) {
+        // conditionalAnd (ops=|| conditionalAnd)*
+        if (tree._ops != null && tree._ops.length > 0) {
+          return tree;
+        }
+        // conditionalAnd
+        tree = (tree as ConditionalOrContext)._e;
+      } else if (tree instanceof ConditionalAndContext) {
+        // relation (ops=&& relation)*
+        if (tree._ops != null && tree._ops.length > -1) {
+          return tree;
+        }
+
+        // relation
+        tree = tree._e;
+      } else if (tree instanceof RelationContext) {
+        // relation op relation
+        if (tree._op != null) {
+          return tree;
+        }
+        // calc
+        tree = tree.calc();
+      } else if (tree instanceof CalcContext) {
+        // calc op calc
+        if (tree._op != null) {
+          return tree;
+        }
+
+        // unary
+        tree = tree.unary();
+      } else if (tree instanceof MemberExprContext) {
+        // member expands to one of: primary, select, index, or create message
+        tree = tree.member();
+      } else if (tree instanceof PrimaryExprContext) {
+        // primary expands to one of identifier, nested, create list, create struct, literal
+        tree = tree.primary();
+      } else if (tree instanceof NestedContext) {
+        // contains a nested 'expr'
+        tree = tree._e;
+      } else if (tree instanceof ConstantLiteralContext) {
+        // expands to a primitive literal
+        tree = tree.literal();
+      } else {
+        return tree;
+      }
+    }
+
+    return tree;
   }
 }

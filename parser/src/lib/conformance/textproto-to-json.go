@@ -56,6 +56,8 @@ func main() {
 	arr := []string{
 		filepath.Join("testdata", "basic.textproto"),
 		filepath.Join("testdata", "comparisons.textproto"),
+		filepath.Join("testdata", "fp_math.textproto"),
+		filepath.Join("testdata", "integer_math.textproto"),
 	}
 	for i := 0; i < len(arr); i++ { 
 		input_file := arr[i]

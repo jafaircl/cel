@@ -1,14 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { TestAllTypes } from '@buf/google_cel-spec.bufbuild_es/cel/expr/conformance/proto3/test_all_types_pb';
+import { TestAllTypes as TestAllTypesProto2 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/conformance/proto2/test_all_types_pb';
+import { TestAllTypes as TestAllTypesProto3 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/conformance/proto3/test_all_types_pb';
 import { SimpleTestFile } from '@buf/google_cel-spec.bufbuild_es/cel/expr/conformance/simple_pb.js';
 import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
+import { Any, MessageType } from '@bufbuild/protobuf';
 import { parse } from '../../parse';
 import { Binding } from '../../types';
 
 declare const it: any;
 declare const expect: any;
+
+class TestAllTypesForTestProto3 extends TestAllTypesProto3 {
+  static readonly typeName = 'TestAllTypes' as any;
+}
+
+class TestAllTypesForTestProto2 extends TestAllTypesProto2 {
+  static readonly typeName = 'TestAllTypes' as any;
+}
+
+class AnyProtobuf extends Any {
+  static readonly typeName = 'protobuf.Any' as any;
+}
+
+const messageTypes: MessageType[] = [AnyProtobuf];
 
 export function runTest(testFile: SimpleTestFile) {
   for (const section of testFile.section) {
@@ -21,34 +37,22 @@ export function runTest(testFile: SimpleTestFile) {
             bindings[name] = value.kind.value;
           }
         }
+        if (test.container === 'google.api.expr.test.v1.proto3') {
+          messageTypes.push(TestAllTypesForTestProto3);
+        } else if (test.container === 'google.api.expr.test.v1.proto2') {
+          messageTypes.push(TestAllTypesForTestProto2);
+        }
         if (
           test.resultMatcher.case === 'value' &&
           test.resultMatcher.value.kind.value
         ) {
-          class TestAllTypesForTest extends TestAllTypes {
-            static readonly typeName = 'TestAllTypes' as any;
-          }
-          //   if (test.name === 'eq_bool_not_null') {
-          //     console.log(
-          //       parse(
-          //         test.expr,
-          //         declarations,
-          //         [TestAllTypesForTest],
-          //         [],
-          //         bindings,
-          //         test.disableCheck === false
-          //       ).toJsonString({ prettySpaces: 2 })
-          //     );
-          //   }
           expect(
-            parse(
-              test.expr,
+            parse(test.expr, {
               declarations,
-              [TestAllTypesForTest],
-              [],
+              messageTypes,
               bindings,
-              test.disableCheck === false
-            )
+              check: test.disableCheck === false,
+            })
           ).toEqual(
             new ExprValue({
               kind: {
@@ -66,14 +70,12 @@ export function runTest(testFile: SimpleTestFile) {
         }
         if (test.resultMatcher.case === 'evalError') {
           expect(
-            parse(
-              test.expr,
+            parse(test.expr, {
               declarations,
-              [TestAllTypes],
-              [],
+              messageTypes,
               bindings,
-              test.disableCheck === false
-            )
+              check: test.disableCheck === false,
+            })
           ).toEqual(
             new ExprValue({
               kind: {

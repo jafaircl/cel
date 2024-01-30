@@ -64,7 +64,8 @@ export class CELProgram {
         },
       });
     }
-    const value = this._evalInternal(intermediateResult);
+    let value = this._evalInternal(intermediateResult);
+    value = this._checkOverflow(value);
     if (
       this.#errors.errors.length > 0 &&
       value.kind.value === this.#ERROR.kind.value
@@ -85,7 +86,6 @@ export class CELProgram {
   }
 
   private _evalInternal(expr: Expr) {
-    // TODO: flesh this out
     switch (expr.exprKind.case) {
       case 'identExpr':
         return this._evalIdent(expr.exprKind.value);
@@ -99,6 +99,9 @@ export class CELProgram {
         return this._evalList(expr.exprKind.value);
       case 'selectExpr':
         return this._evalSelect(expr.exprKind.value);
+      case 'comprehensionExpr':
+        console.log(expr.exprKind.value);
+        throw new Error('Not implemented');
       default:
         throw new Error(`Unknown expression kind: ${expr.exprKind.case}`);
     }
@@ -344,6 +347,53 @@ export class CELProgram {
         throw new Error(
           `Unsupported constant case: ${constant.constantKind.case}`
         );
+    }
+  }
+
+  private _checkOverflow(value: Value) {
+    switch (value.kind.case) {
+      case 'int64Value':
+        if (value.kind.value < -BigInt('9223372036854775808')) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: 'return error for overflow',
+            })
+          );
+          return this.#ERROR;
+        }
+        if (value.kind.value > BigInt('9223372036854775807')) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: 'return error for overflow',
+            })
+          );
+          return this.#ERROR;
+        }
+        return value;
+      case 'uint64Value':
+        if (value.kind.value < 0) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: 'return error for overflow',
+            })
+          );
+          return this.#ERROR;
+        }
+        if (value.kind.value > BigInt('9223372036854775807')) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: 'return error for overflow',
+            })
+          );
+          return this.#ERROR;
+        }
+        return value;
+      default:
+        return value;
     }
   }
 }

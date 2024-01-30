@@ -101,6 +101,27 @@ export function logicalOr(x: Value, y: Value) {
   return y;
 }
 
+export function negate(x: Value): Value {
+  switch (x.kind.case) {
+    case 'doubleValue':
+      return new Value({
+        kind: {
+          case: 'doubleValue',
+          value: -x.kind.value,
+        },
+      });
+    case 'int64Value':
+      return new Value({
+        kind: {
+          case: 'int64Value',
+          value: -x.kind.value,
+        },
+      });
+    default:
+      throw new Error('no such overload');
+  }
+}
+
 export function equals(x: Value, y: Value): Value {
   switch (x.kind.case) {
     case 'listValue':
@@ -185,6 +206,21 @@ export function equals(x: Value, y: Value): Value {
         kind: {
           case: 'boolValue',
           value: true,
+        },
+      });
+    case 'objectValue':
+      if (y.kind.case !== 'objectValue') {
+        return new Value({
+          kind: {
+            case: 'boolValue',
+            value: false,
+          },
+        });
+      }
+      return new Value({
+        kind: {
+          case: 'boolValue',
+          value: x.kind.value.equals(y.kind.value),
         },
       });
     default:
@@ -367,6 +403,12 @@ export function multiply(x: Value, y: Value): Value {
 }
 
 export function divide(x: Value, y: Value): Value {
+  if (
+    (y.kind.case === 'int64Value' || y.kind.case === 'uint64Value') &&
+    Number(y.kind.value) == 0
+  ) {
+    throw new Error('divide by zero');
+  }
   return new Value({
     kind: {
       case: x.kind.case,
@@ -377,6 +419,23 @@ export function divide(x: Value, y: Value): Value {
 }
 
 export function modulo(x: Value, y: Value): Value {
+  if (y.kind.case !== 'int64Value' && y.kind.case !== 'uint64Value') {
+    throw new Error(
+      `found no matching overload for '${
+        Operator.MODULO
+      }' applied to '(${x.kind.case?.replace(
+        'Value',
+        ''
+      )}, ${x.kind.case?.replace('Value', '')})'`
+    );
+  }
+
+  if (
+    (y.kind.case === 'int64Value' || y.kind.case === 'uint64Value') &&
+    Number(y.kind.value) == 0
+  ) {
+    throw new Error('modulus by zero');
+  }
   return new Value({
     kind: {
       case: x.kind.case,
@@ -386,11 +445,21 @@ export function modulo(x: Value, y: Value): Value {
   });
 }
 
+export function double(x: Value): Value {
+  return new Value({
+    kind: {
+      case: 'doubleValue',
+      value: Number(x.kind.value),
+    },
+  });
+}
+
 export const base_functions = {
   [Operator.CONDITIONAL]: logicalCondition,
   [Operator.LOGICAL_AND]: logicalAnd,
   [Operator.LOGICAL_NOT]: logicalNot,
   [Operator.LOGICAL_OR]: logicalOr,
+  [Operator.NEGATE]: negate,
   [Operator.EQUALS]: equals,
   [Operator.NOT_EQUALS]: notEquals,
   [Operator.GREATER]: greaterThan,
@@ -404,4 +473,5 @@ export const base_functions = {
   [Operator.DIVIDE]: divide,
   [Operator.MODULO]: modulo,
   dyn: (x: Value) => x,
+  double,
 };
