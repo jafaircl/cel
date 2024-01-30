@@ -383,13 +383,15 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       return member;
     }
     const id = ctx._id.text;
+    const args = this.visit(ctx.exprList()).exprKind.value as Expr_CreateList;
     return new Expr({
       id: this.#exprId++,
       exprKind: {
         case: 'callExpr',
         value: {
           function: id,
-          args: [member],
+          args: args.elements,
+          target: member,
         },
       },
     });

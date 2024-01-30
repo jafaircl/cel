@@ -36,6 +36,7 @@ import { base_functions } from './functions';
 import { StartContext } from './gen/CELParser';
 import { CELParser } from './parser';
 import { Binding } from './types';
+import { isNil } from './util';
 
 export class CELProgram {
   #ERROR = new Value({
@@ -314,8 +315,12 @@ export class CELProgram {
       );
       return this.#ERROR;
     }
+    let args = expr.args?.map((arg) => this._evalInternal(arg)) ?? [];
+    if (!isNil(expr.target)) {
+      args = [this._evalInternal(expr.target), ...args];
+    }
     try {
-      return fn(...expr.args!.map((arg) => this._evalInternal(arg)));
+      return fn(...args);
     } catch (e) {
       this.#errors.errors.push(
         new Status({

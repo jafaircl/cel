@@ -358,6 +358,17 @@ export function add(x: Value, y: Value): Value {
       },
     });
   }
+  if (x.kind.case === 'bytesValue') {
+    if (y.kind.case !== 'bytesValue') {
+      throw new Error('no such overload');
+    }
+    return new Value({
+      kind: {
+        case: 'bytesValue',
+        value: new Uint8Array([...x.kind.value, ...y.kind.value]),
+      },
+    });
+  }
   return new Value({
     kind: {
       case: x.kind.case,
@@ -445,6 +456,92 @@ export function modulo(x: Value, y: Value): Value {
   });
 }
 
+export function size(x: Value): Value {
+  switch (x.kind.case) {
+    case 'listValue':
+      return new Value({
+        kind: {
+          case: 'int64Value',
+          value: BigInt(x.kind.value.values.length),
+        },
+      });
+    case 'mapValue':
+      return new Value({
+        kind: {
+          case: 'int64Value',
+          value: BigInt(x.kind.value.entries.length),
+        },
+      });
+    case 'stringValue':
+      return new Value({
+        kind: {
+          case: 'int64Value',
+          value: BigInt(x.kind.value.length),
+        },
+      });
+    case 'bytesValue':
+      return new Value({
+        kind: {
+          case: 'int64Value',
+          value: BigInt(x.kind.value.length),
+        },
+      });
+    default:
+      throw new Error('no such overload');
+  }
+}
+
+export function contains(x: Value, y: Value): Value {
+  if (x.kind.case === 'stringValue') {
+    if (y.kind.case !== 'stringValue') {
+      throw new Error('no such overload');
+    }
+    return new Value({
+      kind: {
+        case: 'boolValue',
+        value: x.kind.value.includes(y.kind.value),
+      },
+    });
+  }
+  throw new Error('no such overload');
+}
+
+export function endsWith(str: Value, suffix: Value): Value {
+  if (str.kind.case !== 'stringValue' || suffix.kind.case !== 'stringValue') {
+    throw new Error('no such overload');
+  }
+  return new Value({
+    kind: {
+      case: 'boolValue',
+      value: str.kind.value.endsWith(suffix.kind.value),
+    },
+  });
+}
+
+export function matches(str: Value, regex: Value): Value {
+  if (str.kind.case !== 'stringValue' || regex.kind.case !== 'stringValue') {
+    throw new Error('no such overload');
+  }
+  return new Value({
+    kind: {
+      case: 'boolValue',
+      value: new RegExp(regex.kind.value).test(str.kind.value),
+    },
+  });
+}
+
+export function startsWith(str: Value, prefix: Value): Value {
+  if (str.kind.case !== 'stringValue' || prefix.kind.case !== 'stringValue') {
+    throw new Error('no such overload');
+  }
+  return new Value({
+    kind: {
+      case: 'boolValue',
+      value: str.kind.value.startsWith(prefix.kind.value),
+    },
+  });
+}
+
 export function double(x: Value): Value {
   return new Value({
     kind: {
@@ -472,6 +569,11 @@ export const base_functions = {
   [Operator.MULTIPLY]: multiply,
   [Operator.DIVIDE]: divide,
   [Operator.MODULO]: modulo,
+  contains,
   dyn: (x: Value) => x,
   double,
+  endsWith,
+  matches,
+  size,
+  startsWith,
 };
