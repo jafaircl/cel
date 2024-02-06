@@ -1,5 +1,7 @@
 # Common Expression Language
 
+## NOTE: This is a work in progress and should not be used in production
+
 The Common Expression Language (CEL) is a non-Turing complete language designed
 for simplicity, speed, safety, and portability. CEL's C-like [syntax][1] looks
 nearly identical to equivalent expressions in C++, Go, Java, and TypeScript.
