@@ -155,10 +155,20 @@ ignored.
 ```typescript
 // The `out` var contains the output of a successful evaluation.
 const out = program.eval({
-    "name": "/groups/acme.co/documents/secret-stuff",
-    "group": "acme.co"
+    name: new Value({
+        kind: {
+            case: 'stringValue',
+            value: '/groups/acme.co/documents/secret-stuff',
+        },
+    }),
+    group: new Value({
+        kind: {
+            case: 'stringValue',
+            value: 'acme.co',
+        },
+    }),
 })
-console.log(out) // 'true'
+console.log(out) // new ExprValue({ kind: { case: 'value', value: { kind: { case: 'boolValue', value: true, }, }, }, })
 ```
 
 <!-- #### Partial State
