@@ -43,7 +43,7 @@ export function parse(expr: string, options?: ParseOptions) {
   );
   const ast = environment.compile(
     expr,
-    isNil(options?.check) ? false : options.check
+    isNil(options?.check) ? false : options?.check
   );
   const program = environment.program(ast);
   return program.eval(options?.bindings ?? {});

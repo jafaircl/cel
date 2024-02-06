@@ -1,5 +1,5 @@
 {
-  "name": "@cel/parser",
+  "name": "@celjs/parser",
   "version": "0.0.1",
   "dependencies": {},
   "main": "./index.js",
