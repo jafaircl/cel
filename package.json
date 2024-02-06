@@ -1,5 +1,5 @@
 {
-  "name": "cel",
+  "name": "celjs",
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
@@ -7,7 +7,7 @@
     "prepare-conformance": "npx nx prepare-conformance parser",
     "test:conformance": "npx nx conformance parser"
   },
-  "private": true,
+  "private": false,
   "dependencies": {
     "@buf/google_cel-spec.bufbuild_es": "^1.6.0-20231211223032-f53499f1d3a9.1",
     "@bufbuild/protobuf": "^1.6.0",

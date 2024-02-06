@@ -1,7 +1,15 @@
 {
   "name": "@celjs/parser",
   "version": "0.0.1",
-  "dependencies": {},
+  "dependencies": {
+    "@buf/google_cel-spec.bufbuild_es": "^1.6.0-20231211223032-f53499f1d3a9.1",
+    "@bufbuild/protobuf": "^1.6.0",
+    "antlr4": "^4.13.1-patch-1",
+    "@buf/googleapis_googleapis.bufbuild_es": "1.6.0-20231130202535-b30c5775bfb3.1",
+    "@nx/vite": "17.2.8",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "~2.3.0"
+  },
   "main": "./index.js",
   "module": "./index.mjs",
   "typings": "./index.d.ts"

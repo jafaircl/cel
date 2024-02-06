@@ -2,6 +2,13 @@
 
 ## NOTE: This is a work in progress and should not be used in production
 
+
+<p align="center">
+  <a href="https://www.npmjs.com/@celjs/parser">
+    <img src="https://img.shields.io/npm/v/@celjs/parser.svg?logo=npm&logoColor=fff&label=NPM+package&color=limegreen" alt="@celjs/parser on npm" />
+  </a>
+</p>
+
 The Common Expression Language (CEL) is a non-Turing complete language designed
 for simplicity, speed, safety, and portability. CEL's C-like [syntax][1] looks
 nearly identical to equivalent expressions in C++, Go, Java, and TypeScript.
@@ -35,6 +42,7 @@ scripting language is too resource intensive. To get started, try the
 ---
 
 - [Common Expression Language](#common-expression-language)
+  - [NOTE: This is a work in progress and should not be used in production](#note-this-is-a-work-in-progress-and-should-not-be-used-in-production)
   - [Overview](#overview)
     - [Environment Setup](#environment-setup)
     - [Parse and Check](#parse-and-check)

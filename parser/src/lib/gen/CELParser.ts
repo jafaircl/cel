@@ -136,7 +136,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public start(): StartContext {
-		let localctx: StartContext = new StartContext(this, this._ctx, this.state);
+		const localctx: StartContext = new StartContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 0, CELParser.RULE_start);
 		try {
 			this.enterOuterAlt(localctx, 1);
@@ -163,7 +163,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public expr(): ExprContext {
-		let localctx: ExprContext = new ExprContext(this, this._ctx, this.state);
+		const localctx: ExprContext = new ExprContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 2, CELParser.RULE_expr);
 		let _la: number;
 		try {
@@ -205,7 +205,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public conditionalOr(): ConditionalOrContext {
-		let localctx: ConditionalOrContext = new ConditionalOrContext(this, this._ctx, this.state);
+		const localctx: ConditionalOrContext = new ConditionalOrContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 4, CELParser.RULE_conditionalOr);
 		let _la: number;
 		try {
@@ -249,7 +249,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public conditionalAnd(): ConditionalAndContext {
-		let localctx: ConditionalAndContext = new ConditionalAndContext(this, this._ctx, this.state);
+		const localctx: ConditionalAndContext = new ConditionalAndContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 6, CELParser.RULE_conditionalAnd);
 		let _la: number;
 		try {
@@ -300,11 +300,11 @@ export default class CELParser extends Parser {
 			_p = 0;
 		}
 
-		let _parentctx: ParserRuleContext = this._ctx;
-		let _parentState: number = this.state;
+		const _parentctx: ParserRuleContext = this._ctx;
+		const _parentState: number = this.state;
 		let localctx: RelationContext = new RelationContext(this, this._ctx, _parentState);
 		let _prevctx: RelationContext = localctx;
-		let _startState: number = 8;
+		const _startState: number = 8;
 		this.enterRecursionRule(localctx, 8, CELParser.RULE_relation, _p);
 		let _la: number;
 		try {
@@ -377,11 +377,11 @@ export default class CELParser extends Parser {
 			_p = 0;
 		}
 
-		let _parentctx: ParserRuleContext = this._ctx;
-		let _parentState: number = this.state;
+		const _parentctx: ParserRuleContext = this._ctx;
+		const _parentState: number = this.state;
 		let localctx: CalcContext = new CalcContext(this, this._ctx, _parentState);
 		let _prevctx: CalcContext = localctx;
-		let _startState: number = 10;
+		const _startState: number = 10;
 		this.enterRecursionRule(localctx, 10, CELParser.RULE_calc, _p);
 		let _la: number;
 		try {
@@ -568,11 +568,11 @@ export default class CELParser extends Parser {
 			_p = 0;
 		}
 
-		let _parentctx: ParserRuleContext = this._ctx;
-		let _parentState: number = this.state;
+		const _parentctx: ParserRuleContext = this._ctx;
+		const _parentState: number = this.state;
 		let localctx: MemberContext = new MemberContext(this, this._ctx, _parentState);
 		let _prevctx: MemberContext = localctx;
-		let _startState: number = 14;
+		const _startState: number = 14;
 		this.enterRecursionRule(localctx, 14, CELParser.RULE_member, _p);
 		let _la: number;
 		try {
@@ -910,7 +910,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public exprList(): ExprListContext {
-		let localctx: ExprListContext = new ExprListContext(this, this._ctx, this.state);
+		const localctx: ExprListContext = new ExprListContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 18, CELParser.RULE_exprList);
 		let _la: number;
 		try {
@@ -954,7 +954,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public listInit(): ListInitContext {
-		let localctx: ListInitContext = new ListInitContext(this, this._ctx, this.state);
+		const localctx: ListInitContext = new ListInitContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 20, CELParser.RULE_listInit);
 		try {
 			let _alt: number;
@@ -1000,7 +1000,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public fieldInitializerList(): FieldInitializerListContext {
-		let localctx: FieldInitializerListContext = new FieldInitializerListContext(this, this._ctx, this.state);
+		const localctx: FieldInitializerListContext = new FieldInitializerListContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 22, CELParser.RULE_fieldInitializerList);
 		try {
 			let _alt: number;
@@ -1058,7 +1058,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public optField(): OptFieldContext {
-		let localctx: OptFieldContext = new OptFieldContext(this, this._ctx, this.state);
+		const localctx: OptFieldContext = new OptFieldContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 24, CELParser.RULE_optField);
 		let _la: number;
 		try {
@@ -1094,7 +1094,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public mapInitializerList(): MapInitializerListContext {
-		let localctx: MapInitializerListContext = new MapInitializerListContext(this, this._ctx, this.state);
+		const localctx: MapInitializerListContext = new MapInitializerListContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 26, CELParser.RULE_mapInitializerList);
 		try {
 			let _alt: number;
@@ -1152,7 +1152,7 @@ export default class CELParser extends Parser {
 	}
 	// @RuleVersion(0)
 	public optExpr(): OptExprContext {
-		let localctx: OptExprContext = new OptExprContext(this, this._ctx, this.state);
+		const localctx: OptExprContext = new OptExprContext(this, this._ctx, this.state);
 		this.enterRule(localctx, 28, CELParser.RULE_optExpr);
 		let _la: number;
 		try {
