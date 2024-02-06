@@ -5,6 +5,7 @@ import {
   Expr_CreateList,
   Expr_CreateStruct,
   Expr_CreateStruct_Entry,
+  Expr_Ident,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
 import { Any, NullValue, StringValue } from '@bufbuild/protobuf';
@@ -384,17 +385,45 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     }
     const id = ctx._id.text;
     const args = this.visit(ctx.exprList()).exprKind.value as Expr_CreateList;
-    return new Expr({
-      id: this.#exprId++,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: id,
-          args: args.elements,
-          target: member,
-        },
-      },
-    });
+    const operator = getOperatorFromText(id);
+    switch (operator) {
+      case Operator.ALL:
+      case Operator.EXISTS:
+      case Operator.FILTER:
+      case Operator.MAP:
+        return new Expr({
+          id: this.#exprId++,
+          exprKind: {
+            case: 'comprehensionExpr',
+            value: {
+              iterVar: (args.elements[0].exprKind.value as Expr_Ident).name,
+              iterRange: member,
+              loopStep: new Expr({
+                id: this.#exprId++,
+                exprKind: {
+                  case: 'callExpr',
+                  value: {
+                    function: operator,
+                    args: [args.elements[1]],
+                  },
+                },
+              }),
+            },
+          },
+        });
+      default:
+        return new Expr({
+          id: this.#exprId++,
+          exprKind: {
+            case: 'callExpr',
+            value: {
+              function: id,
+              args: args.elements,
+              target: member,
+            },
+          },
+        });
+    }
   };
 
   // TODO: visitIndex

@@ -1,4 +1,7 @@
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
+import {
+  ListValue,
+  Value,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { Operator } from './operator';
 
 /**
@@ -551,6 +554,24 @@ export function double(x: Value): Value {
   });
 }
 
+export function dyn(x: Value): Value {
+  return x;
+}
+
+export function filter(
+  acc: ListValue,
+  val: Value,
+  predicate: Value
+): ListValue {
+  if (predicate.kind.case !== 'boolValue') {
+    throw new Error('no such overload');
+  }
+  if (predicate.kind.value) {
+    acc.values.push(val);
+  }
+  return acc;
+}
+
 export const base_functions = {
   [Operator.CONDITIONAL]: logicalCondition,
   [Operator.LOGICAL_AND]: logicalAnd,
@@ -570,9 +591,10 @@ export const base_functions = {
   [Operator.DIVIDE]: divide,
   [Operator.MODULO]: modulo,
   contains,
-  dyn: (x: Value) => x,
+  dyn,
   double,
   endsWith,
+  filter,
   matches,
   size,
   startsWith,

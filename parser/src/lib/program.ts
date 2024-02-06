@@ -7,12 +7,14 @@ import {
   Constant,
   Expr,
   Expr_Call,
+  Expr_Comprehension,
   Expr_CreateList,
   Expr_CreateStruct,
   Expr_Ident,
   Expr_Select,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import {
+  ListValue,
   MapValue_Entry,
   Value,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
@@ -34,6 +36,7 @@ import {
 } from '@bufbuild/protobuf';
 import { base_functions } from './functions';
 import { StartContext } from './gen/CELParser';
+import { Operator } from './operator';
 import { CELParser } from './parser';
 import { Binding } from './types';
 import { isNil } from './util';
@@ -101,8 +104,7 @@ export class CELProgram {
       case 'selectExpr':
         return this._evalSelect(expr.exprKind.value);
       case 'comprehensionExpr':
-        console.log(expr.exprKind.value);
-        throw new Error('Not implemented');
+        return this._evalComprehension(expr.exprKind.value);
       default:
         throw new Error(`Unknown expression kind: ${expr.exprKind.case}`);
     }
@@ -330,6 +332,267 @@ export class CELProgram {
       );
       return this.#ERROR;
     }
+  }
+
+  private _evalComprehension(expr: Expr_Comprehension): Value {
+    if (isNil(expr.iterRange)) {
+      this.#errors.errors.push(
+        new Status({
+          code: 0,
+          message: 'missing iterRange',
+        })
+      );
+      return this.#ERROR;
+    }
+    if (expr.loopStep?.exprKind.case !== 'callExpr') {
+      this.#errors.errors.push(
+        new Status({
+          code: 0,
+          message: 'unsupported loopStep',
+        })
+      );
+      return this.#ERROR;
+    }
+    const iterRange = this._evalInternal(expr.iterRange as Expr);
+    switch (expr.loopStep.exprKind.value.function) {
+      case Operator.ALL:
+        return this._evalMacroAll(
+          iterRange,
+          expr.iterVar,
+          expr.loopStep.exprKind.value
+        );
+      case Operator.EXISTS:
+        return this._evalMacroExists(
+          iterRange,
+          expr.iterVar,
+          expr.loopStep.exprKind.value
+        );
+      case Operator.FILTER:
+        return this._evalMacroFilter(
+          iterRange,
+          expr.iterVar,
+          expr.loopStep.exprKind.value
+        );
+      case Operator.MAP:
+        return this._evalMacroMap(
+          iterRange,
+          expr.iterVar,
+          expr.loopStep.exprKind.value
+        );
+      default:
+        throw new Error(
+          `Unsupported loopStep function: ${expr.loopStep.exprKind.value.function}`
+        );
+    }
+
+    // let `accu_var` = `accu_init`
+    // for (let `iter_var` in `iter_range`) {
+    //   if (!`loop_condition`) {
+    //     break
+    //   }
+    //   `accu_var` = `loop_step`
+    // }
+    // return `result`
+  }
+
+  private _evalMacroAll(
+    iterRange: Value,
+    iterVar: string,
+    exprCall: Expr_Call
+  ) {
+    let values: Value[] = [];
+    switch (iterRange.kind.case) {
+      case 'listValue':
+        values = iterRange.kind.value.values;
+        break;
+      case 'mapValue':
+        values = iterRange.kind.value.entries.map(
+          (entry) => entry.key as Value
+        );
+        break;
+      default:
+        this.#errors.errors.push(
+          new Status({
+            code: 0,
+            message: 'iterRange is not a list or map',
+          })
+        );
+        return this.#ERROR;
+    }
+    if (values.length === 0) {
+      return new Value({
+        kind: {
+          case: 'boolValue',
+          value: false,
+        },
+      });
+    }
+    for (const value of values) {
+      const origBinding = this.#bindings[iterVar];
+      this.#bindings[iterVar] = value;
+      const result = this._evalInternal(exprCall.args[0]);
+      if (result.kind.value == this.#ERROR.kind.value) {
+        return this.#ERROR;
+      }
+      if (result.kind.value === false) {
+        return new Value({
+          kind: {
+            case: 'boolValue',
+            value: false,
+          },
+        });
+      }
+      this.#bindings[iterVar] = origBinding;
+    }
+    return new Value({
+      kind: {
+        case: 'boolValue',
+        value: true,
+      },
+    });
+  }
+
+  private _evalMacroExists(
+    iterRange: Value,
+    iterVar: string,
+    exprCall: Expr_Call
+  ) {
+    let values: Value[] = [];
+    switch (iterRange.kind.case) {
+      case 'listValue':
+        values = iterRange.kind.value.values;
+        break;
+      case 'mapValue':
+        values = iterRange.kind.value.entries.map(
+          (entry) => entry.key as Value
+        );
+        break;
+      default:
+        this.#errors.errors.push(
+          new Status({
+            code: 0,
+            message: 'iterRange is not a list or map',
+          })
+        );
+        return this.#ERROR;
+    }
+    if (values.length === 0) {
+      return new Value({
+        kind: {
+          case: 'boolValue',
+          value: false,
+        },
+      });
+    }
+    for (const value of values) {
+      const origBinding = this.#bindings[iterVar];
+      this.#bindings[iterVar] = value;
+      const result = this._evalInternal(exprCall.args[0]);
+      if (result.kind.value) {
+        if (result.kind.value == this.#ERROR.kind.value) {
+          return this.#ERROR;
+        }
+        return new Value({
+          kind: {
+            case: 'boolValue',
+            value: true,
+          },
+        });
+      }
+      this.#bindings[iterVar] = origBinding;
+    }
+    return new Value({
+      kind: {
+        case: 'boolValue',
+        value: false,
+      },
+    });
+  }
+
+  private _evalMacroFilter(
+    iterRange: Value,
+    iterVar: string,
+    exprCall: Expr_Call
+  ) {
+    if (iterRange.kind.case !== 'listValue') {
+      this.#errors.errors.push(
+        new Status({
+          code: 0,
+          message: 'iterRange is not a listp',
+        })
+      );
+      return this.#ERROR;
+    }
+    const listValue = new ListValue();
+    if (iterRange.kind.value.values.length === 0) {
+      return new Value({
+        kind: {
+          case: 'listValue',
+          value: listValue,
+        },
+      });
+    }
+    for (const value of iterRange.kind.value.values) {
+      const origBinding = this.#bindings[iterVar];
+      this.#bindings[iterVar] = value;
+      const result = this._evalInternal(exprCall.args[0]);
+      if (result.kind.value) {
+        if (result.kind.value == this.#ERROR.kind.value) {
+          return this.#ERROR;
+        }
+        listValue.values.push(value);
+      }
+      this.#bindings[iterVar] = origBinding;
+    }
+    return new Value({
+      kind: {
+        case: 'listValue',
+        value: listValue,
+      },
+    });
+  }
+
+  private _evalMacroMap(
+    iterRange: Value,
+    iterVar: string,
+    exprCall: Expr_Call
+  ) {
+    if (iterRange.kind.case !== 'listValue') {
+      this.#errors.errors.push(
+        new Status({
+          code: 0,
+          message: 'iterRange is not a listp',
+        })
+      );
+      return this.#ERROR;
+    }
+    const listValue = new ListValue();
+    if (iterRange.kind.value.values.length === 0) {
+      return new Value({
+        kind: {
+          case: 'listValue',
+          value: listValue,
+        },
+      });
+    }
+    for (const value of iterRange.kind.value.values) {
+      const origBinding = this.#bindings[iterVar];
+      this.#bindings[iterVar] = value;
+      const result = this._evalInternal(exprCall.args[0]);
+      if (result.kind.value) {
+        if (result.kind.value == this.#ERROR.kind.value) {
+          return this.#ERROR;
+        }
+        listValue.values.push(result);
+      }
+      this.#bindings[iterVar] = origBinding;
+    }
+    return new Value({
+      kind: {
+        case: 'listValue',
+        value: listValue,
+      },
+    });
   }
 
   private _evalConstant(constant: Constant) {
