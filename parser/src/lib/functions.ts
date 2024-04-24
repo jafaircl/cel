@@ -585,6 +585,34 @@ export function filter(
   return acc;
 }
 
+export function index(list: Value, index: Value): Value {
+  if (list.kind.case !== 'listValue') {
+    throw new Error('no_such_overload');
+  }
+  if (index.kind.case === 'doubleValue' && index.kind.value % 1 !== 0) {
+    throw new Error('invalid argument');
+  }
+  for (let i = 0; i < list.kind.value.values.length; i++) {
+    switch (index.kind.case) {
+      case 'int64Value':
+      case 'uint64Value':
+      case 'doubleValue':
+        if (i === Number(index.kind.value)) {
+          return list.kind.value.values[i];
+        }
+        break;
+      default:
+        continue;
+    }
+  }
+  return new Value({
+    kind: {
+      case: 'int64Value',
+      value: BigInt(-1),
+    },
+  });
+}
+
 export const base_functions = {
   [Operator.CONDITIONAL]: logicalCondition,
   [Operator.LOGICAL_AND]: logicalAnd,
@@ -604,6 +632,7 @@ export const base_functions = {
   [Operator.DIVIDE]: divide,
   [Operator.MODULO]: modulo,
   [Operator.NOT_STRICTLY_FALSE]: notStrictlyFalse,
+  [Operator.INDEX]: index,
   contains,
   dyn,
   double,

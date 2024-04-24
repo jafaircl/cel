@@ -39,4 +39,36 @@ describe('eval', () => {
       })
     );
   });
+
+  it('lists 1', () => {
+    expect(parseAndEval('[7, 8, 9][0]')).toEqual(
+      new ExprValue({
+        kind: {
+          case: 'value',
+          value: new Value({
+            kind: {
+              case: 'int64Value',
+              value: BigInt(7),
+            },
+          }),
+        },
+      })
+    );
+  });
+
+  it('lists size', () => {
+    expect(parseAndEval('[7, 8, 9].size()')).toEqual(
+      new ExprValue({
+        kind: {
+          case: 'value',
+          value: new Value({
+            kind: {
+              case: 'int64Value',
+              value: BigInt(3),
+            },
+          }),
+        },
+      })
+    );
+  });
 });

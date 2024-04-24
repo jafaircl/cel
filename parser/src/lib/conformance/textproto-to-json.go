@@ -58,6 +58,7 @@ func main() {
 		filepath.Join("testdata", "comparisons.textproto"),
 		filepath.Join("testdata", "fp_math.textproto"),
 		filepath.Join("testdata", "integer_math.textproto"),
+		filepath.Join("testdata", "lists.textproto"),
 		filepath.Join("testdata", "macros.textproto"),
 		filepath.Join("testdata", "string.textproto"),
 	}
