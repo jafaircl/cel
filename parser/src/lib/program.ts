@@ -14,7 +14,6 @@ import {
   Expr_Select,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import {
-  ListValue,
   MapValue_Entry,
   Value,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
@@ -34,9 +33,9 @@ import {
   UInt64Value,
   createRegistry,
 } from '@bufbuild/protobuf';
+import { ACCUMULATOR_VAR } from './constants';
 import { base_functions } from './functions';
 import { StartContext } from './gen/CELParser';
-import { Operator } from './operator';
 import { CELParser } from './parser';
 import { Binding } from './types';
 import { isNil } from './util';
@@ -48,13 +47,26 @@ export class CELProgram {
       value: '<<error>>',
     },
   });
-  #bindings: Record<string, Binding> = base_functions;
+  #bindings: Record<string, Binding> = {
+    ...base_functions,
+    [ACCUMULATOR_VAR]: new Value({
+      kind: {
+        case: 'nullValue',
+        value: NullValue.NULL_VALUE,
+      },
+    }),
+  };
   #errors = new ErrorSet();
 
   constructor(
     private readonly ast: StartContext,
     private readonly registry: ReturnType<typeof createRegistry>
   ) {}
+
+  parse() {
+    const parser = new CELParser();
+    return this.ast.accept(parser);
+  }
 
   eval(bindings?: Record<string, Binding>): ExprValue {
     this.#bindings = { ...this.#bindings, ...(bindings ?? {}) };
@@ -68,7 +80,7 @@ export class CELProgram {
         },
       });
     }
-    let value = this._evalInternal(intermediateResult);
+    let value = this._evalInternal(intermediateResult, this.#bindings);
     value = this._checkOverflow(value);
     if (
       this.#errors.errors.length > 0 &&
@@ -89,28 +101,31 @@ export class CELProgram {
     });
   }
 
-  private _evalInternal(expr: Expr) {
+  private _evalInternal(expr: Expr, bindings: Record<string, Binding>): Value {
     switch (expr.exprKind.case) {
       case 'identExpr':
-        return this._evalIdent(expr.exprKind.value);
+        return this._evalIdent(expr.exprKind.value, bindings);
       case 'callExpr':
-        return this._evalCall(expr.exprKind.value);
+        return this._evalCall(expr.exprKind.value, bindings);
       case 'constExpr':
-        return this._evalConstant(expr.exprKind.value);
+        return this._evalConstant(expr.exprKind.value, bindings);
       case 'structExpr':
-        return this._evalStruct(expr.exprKind.value);
+        return this._evalStruct(expr.exprKind.value, bindings);
       case 'listExpr':
-        return this._evalList(expr.exprKind.value);
+        return this._evalList(expr.exprKind.value, bindings);
       case 'selectExpr':
-        return this._evalSelect(expr.exprKind.value);
+        return this._evalSelect(expr.exprKind.value, bindings);
       case 'comprehensionExpr':
-        return this._evalComprehension(expr.exprKind.value);
+        return this._evalComprehension(expr.exprKind.value, bindings);
       default:
         throw new Error(`Unknown expression kind: ${expr.exprKind.case}`);
     }
   }
 
-  private _evalSelect(select: Expr_Select): Value {
+  private _evalSelect(
+    select: Expr_Select,
+    bindings: Record<string, Binding>
+  ): Value {
     if (!select.operand) {
       this.#errors.errors.push(
         new Status({
@@ -120,7 +135,7 @@ export class CELProgram {
       );
       return this.#ERROR;
     }
-    const operand = this._evalInternal(select.operand);
+    const operand = this._evalInternal(select.operand, bindings);
     switch (operand.kind.case) {
       case 'objectValue':
         const message = operand.kind.value.unpack(this.registry);
@@ -161,7 +176,10 @@ export class CELProgram {
     }
   }
 
-  private _evalStruct(struct: Expr_CreateStruct) {
+  private _evalStruct(
+    struct: Expr_CreateStruct,
+    bindings: Record<string, Binding>
+  ) {
     if (struct.messageName !== '') {
       // This is a message, not a struct
       const messageType = this.registry.findMessage(struct.messageName);
@@ -177,7 +195,7 @@ export class CELProgram {
       const message = new messageType();
       for (const entry of struct.entries) {
         const key = entry.keyKind.value as string;
-        const value = this._evalInternal(entry.value as Expr);
+        const value = this._evalInternal(entry.value as Expr, bindings);
         const field = messageType.fields
           .list()
           .find((f) => f.name === key) as FieldInfo;
@@ -260,8 +278,8 @@ export class CELProgram {
     for (const entry of struct.entries) {
       entries.push(
         new MapValue_Entry({
-          key: this._evalInternal(entry.keyKind.value as Expr),
-          value: this._evalInternal(entry.value as Expr),
+          key: this._evalInternal(entry.keyKind.value as Expr, bindings),
+          value: this._evalInternal(entry.value as Expr, bindings),
         })
       );
     }
@@ -275,10 +293,10 @@ export class CELProgram {
     });
   }
 
-  private _evalList(list: Expr_CreateList) {
+  private _evalList(list: Expr_CreateList, bindings: Record<string, Binding>) {
     const values: Value[] = [];
     for (const value of list.elements) {
-      values.push(this._evalInternal(value as Expr));
+      values.push(this._evalInternal(value as Expr, bindings));
     }
     return new Value({
       kind: {
@@ -290,8 +308,12 @@ export class CELProgram {
     });
   }
 
-  private _evalIdent(ident: Expr_Ident): Value {
-    const binding = this.#bindings[ident.name];
+  private _evalIdent(
+    ident: Expr_Ident,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    bindings: Record<string, Binding>
+  ): Value {
+    const binding = bindings[ident.name];
     if (!binding) {
       this.#errors.errors.push(
         new Status({
@@ -304,10 +326,10 @@ export class CELProgram {
     return binding as Value;
   }
 
-  private _evalCall(expr: Expr_Call): Value {
+  private _evalCall(expr: Expr_Call, bindings: Record<string, Binding>): Value {
     // If it is a known function, get the token, otherwise use the function name
     // eslint-disable-next-line @typescript-eslint/ban-types
-    const fn = this.#bindings[expr.function] as Function;
+    const fn = bindings[expr.function] as Function;
     if (!fn) {
       this.#errors.errors.push(
         new Status({
@@ -317,9 +339,14 @@ export class CELProgram {
       );
       return this.#ERROR;
     }
-    let args = expr.args?.map((arg) => this._evalInternal(arg)) ?? [];
+    let args = expr.args?.map((arg) => this._evalInternal(arg, bindings)) ?? [];
     if (!isNil(expr.target)) {
-      args = [this._evalInternal(expr.target), ...args];
+      args = [this._evalInternal(expr.target, bindings), ...args];
+    }
+    for (const arg of args) {
+      if (arg === this.#ERROR) {
+        return arg;
+      }
     }
     try {
       return fn(...args);
@@ -334,7 +361,10 @@ export class CELProgram {
     }
   }
 
-  private _evalComprehension(expr: Expr_Comprehension): Value {
+  private _evalComprehension(
+    expr: Expr_Comprehension,
+    bindings: Record<string, Binding>
+  ): Value {
     if (isNil(expr.iterRange)) {
       this.#errors.errors.push(
         new Status({
@@ -353,37 +383,50 @@ export class CELProgram {
       );
       return this.#ERROR;
     }
-    const iterRange = this._evalInternal(expr.iterRange as Expr);
-    switch (expr.loopStep.exprKind.value.function) {
-      case Operator.ALL:
-        return this._evalMacroAll(
-          iterRange,
-          expr.iterVar,
-          expr.loopStep.exprKind.value
-        );
-      case Operator.EXISTS:
-        return this._evalMacroExists(
-          iterRange,
-          expr.iterVar,
-          expr.loopStep.exprKind.value
-        );
-      case Operator.FILTER:
-        return this._evalMacroFilter(
-          iterRange,
-          expr.iterVar,
-          expr.loopStep.exprKind.value
-        );
-      case Operator.MAP:
-        return this._evalMacroMap(
-          iterRange,
-          expr.iterVar,
-          expr.loopStep.exprKind.value
-        );
-      default:
-        throw new Error(
-          `Unsupported loopStep function: ${expr.loopStep.exprKind.value.function}`
-        );
+    const iterRangeRaw = this._evalInternal(expr.iterRange as Expr, bindings);
+    let iterRange: Value[];
+    if (iterRangeRaw.kind.case === 'listValue') {
+      iterRange = iterRangeRaw.kind.value.values;
+    } else if (iterRangeRaw.kind.case === 'mapValue') {
+      iterRange = iterRangeRaw.kind.value.entries.map(
+        (entry) => entry.key as Value
+      );
+    } else {
+      this.#errors.errors.push(
+        new Status({
+          code: 0,
+          message: 'expected a list or a map for iteration range',
+        })
+      );
+      return this.#ERROR;
     }
+    let accuValue = expr.accuInit
+      ? this._evalInternal(expr.accuInit, bindings)
+      : new Value({
+          kind: {
+            case: 'nullValue',
+            value: NullValue.NULL_VALUE,
+          },
+        });
+    bindings[expr.accuVar] = accuValue;
+    for (let i = 0; i < iterRange.length; i++) {
+      bindings[expr.iterVar] = iterRange[i];
+      if (expr.loopCondition) {
+        const evalObject = this._evalInternal(expr.loopCondition, bindings);
+        if (!isNil(evalObject.kind.value) && !evalObject.kind.value) {
+          break;
+        }
+      }
+      accuValue = this._evalInternal(expr.loopStep, bindings);
+      if (accuValue === this.#ERROR) {
+        return this.#ERROR;
+      }
+      bindings[expr.accuVar] = accuValue;
+    }
+    if (expr.result?.exprKind.value) {
+      return this._evalInternal(expr.result, bindings);
+    }
+    return accuValue;
 
     // let `accu_var` = `accu_init`
     // for (let `iter_var` in `iter_range`) {
@@ -395,207 +438,8 @@ export class CELProgram {
     // return `result`
   }
 
-  private _evalMacroAll(
-    iterRange: Value,
-    iterVar: string,
-    exprCall: Expr_Call
-  ) {
-    let values: Value[] = [];
-    switch (iterRange.kind.case) {
-      case 'listValue':
-        values = iterRange.kind.value.values;
-        break;
-      case 'mapValue':
-        values = iterRange.kind.value.entries.map(
-          (entry) => entry.key as Value
-        );
-        break;
-      default:
-        this.#errors.errors.push(
-          new Status({
-            code: 0,
-            message: 'iterRange is not a list or map',
-          })
-        );
-        return this.#ERROR;
-    }
-    if (values.length === 0) {
-      return new Value({
-        kind: {
-          case: 'boolValue',
-          value: false,
-        },
-      });
-    }
-    for (const value of values) {
-      const origBinding = this.#bindings[iterVar];
-      this.#bindings[iterVar] = value;
-      const result = this._evalInternal(exprCall.args[0]);
-      if (result.kind.value == this.#ERROR.kind.value) {
-        return this.#ERROR;
-      }
-      if (result.kind.value === false) {
-        return new Value({
-          kind: {
-            case: 'boolValue',
-            value: false,
-          },
-        });
-      }
-      this.#bindings[iterVar] = origBinding;
-    }
-    return new Value({
-      kind: {
-        case: 'boolValue',
-        value: true,
-      },
-    });
-  }
-
-  private _evalMacroExists(
-    iterRange: Value,
-    iterVar: string,
-    exprCall: Expr_Call
-  ) {
-    let values: Value[] = [];
-    switch (iterRange.kind.case) {
-      case 'listValue':
-        values = iterRange.kind.value.values;
-        break;
-      case 'mapValue':
-        values = iterRange.kind.value.entries.map(
-          (entry) => entry.key as Value
-        );
-        break;
-      default:
-        this.#errors.errors.push(
-          new Status({
-            code: 0,
-            message: 'iterRange is not a list or map',
-          })
-        );
-        return this.#ERROR;
-    }
-    if (values.length === 0) {
-      return new Value({
-        kind: {
-          case: 'boolValue',
-          value: false,
-        },
-      });
-    }
-    for (const value of values) {
-      const origBinding = this.#bindings[iterVar];
-      this.#bindings[iterVar] = value;
-      const result = this._evalInternal(exprCall.args[0]);
-      if (result.kind.value) {
-        if (result.kind.value == this.#ERROR.kind.value) {
-          return this.#ERROR;
-        }
-        return new Value({
-          kind: {
-            case: 'boolValue',
-            value: true,
-          },
-        });
-      }
-      this.#bindings[iterVar] = origBinding;
-    }
-    return new Value({
-      kind: {
-        case: 'boolValue',
-        value: false,
-      },
-    });
-  }
-
-  private _evalMacroFilter(
-    iterRange: Value,
-    iterVar: string,
-    exprCall: Expr_Call
-  ) {
-    if (iterRange.kind.case !== 'listValue') {
-      this.#errors.errors.push(
-        new Status({
-          code: 0,
-          message: 'iterRange is not a listp',
-        })
-      );
-      return this.#ERROR;
-    }
-    const listValue = new ListValue();
-    if (iterRange.kind.value.values.length === 0) {
-      return new Value({
-        kind: {
-          case: 'listValue',
-          value: listValue,
-        },
-      });
-    }
-    for (const value of iterRange.kind.value.values) {
-      const origBinding = this.#bindings[iterVar];
-      this.#bindings[iterVar] = value;
-      const result = this._evalInternal(exprCall.args[0]);
-      if (result.kind.value) {
-        if (result.kind.value == this.#ERROR.kind.value) {
-          return this.#ERROR;
-        }
-        listValue.values.push(value);
-      }
-      this.#bindings[iterVar] = origBinding;
-    }
-    return new Value({
-      kind: {
-        case: 'listValue',
-        value: listValue,
-      },
-    });
-  }
-
-  private _evalMacroMap(
-    iterRange: Value,
-    iterVar: string,
-    exprCall: Expr_Call
-  ) {
-    if (iterRange.kind.case !== 'listValue') {
-      this.#errors.errors.push(
-        new Status({
-          code: 0,
-          message: 'iterRange is not a listp',
-        })
-      );
-      return this.#ERROR;
-    }
-    const listValue = new ListValue();
-    if (iterRange.kind.value.values.length === 0) {
-      return new Value({
-        kind: {
-          case: 'listValue',
-          value: listValue,
-        },
-      });
-    }
-    for (const value of iterRange.kind.value.values) {
-      const origBinding = this.#bindings[iterVar];
-      this.#bindings[iterVar] = value;
-      const result = this._evalInternal(exprCall.args[0]);
-      if (result.kind.value) {
-        if (result.kind.value == this.#ERROR.kind.value) {
-          return this.#ERROR;
-        }
-        listValue.values.push(result);
-      }
-      this.#bindings[iterVar] = origBinding;
-    }
-    return new Value({
-      kind: {
-        case: 'listValue',
-        value: listValue,
-      },
-    });
-  }
-
-  private _evalConstant(constant: Constant) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _evalConstant(constant: Constant, bindings: Record<string, Binding>) {
     switch (constant.constantKind.case) {
       case 'nullValue':
       case 'boolValue':

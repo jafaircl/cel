@@ -433,6 +433,10 @@ export function divide(x: Value, y: Value): Value {
 }
 
 export function modulo(x: Value, y: Value): Value {
+  if (x.kind.case === 'stringValue') {
+    throw new Error('no_such_overload');
+  }
+
   if (y.kind.case !== 'int64Value' && y.kind.case !== 'uint64Value') {
     throw new Error(
       `found no matching overload for '${
@@ -558,6 +562,15 @@ export function dyn(x: Value): Value {
   return x;
 }
 
+export function notStrictlyFalse(x: Value): Value {
+  return new Value({
+    kind: {
+      case: 'boolValue',
+      value: x.kind.value !== false,
+    },
+  });
+}
+
 export function filter(
   acc: ListValue,
   val: Value,
@@ -590,6 +603,7 @@ export const base_functions = {
   [Operator.MULTIPLY]: multiply,
   [Operator.DIVIDE]: divide,
   [Operator.MODULO]: modulo,
+  [Operator.NOT_STRICTLY_FALSE]: notStrictlyFalse,
   contains,
   dyn,
   double,

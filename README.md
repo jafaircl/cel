@@ -67,31 +67,19 @@ environment option:
 import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 
 const environment = new CELEnvironment([
-    new Decl({
+    Decl.fromJson({
         name: 'name',
-        declKind: {
-            case: 'ident',
-            value: {
-                type: {
-                    typeKind: {
-                        case: 'primitive',
-                        value: Type_PrimitiveType.STRING,
-                    },
-                },
+        ident: {
+            type: {
+                primitive: Type_PrimitiveType.STRING,
             },
         },
     }),
-    new Decl({
+    Decl.fromJson({
         name: 'group',
-        declKind: {
-            case: 'ident',
-            value: {
-                type: {
-                    typeKind: {
-                        case: 'primitive',
-                        value: Type_PrimitiveType.STRING,
-                    },
-                },
+        ident: {
+            type: {
+                primitive: Type_PrimitiveType.STRING,
             },
         },
     }),
@@ -165,18 +153,8 @@ ignored.
 ```typescript
 // The `out` var contains the output of a successful evaluation.
 const out = program.eval({
-    name: new Value({
-        kind: {
-            case: 'stringValue',
-            value: '/groups/acme.co/documents/secret-stuff',
-        },
-    }),
-    group: new Value({
-        kind: {
-            case: 'stringValue',
-            value: 'acme.co',
-        },
-    }),
+    name: Value.fromJson({ stringValue: '/groups/acme.co/documents/secret-stuff' }),
+    group: Value.fromJson({ stringValue: 'acme.co' }),
 })
 console.log(out) // new ExprValue({ kind: { case: 'value', value: { kind: { case: 'boolValue', value: true, }, }, }, })
 ```

@@ -6,7 +6,7 @@ import { SimpleTestFile } from '@buf/google_cel-spec.bufbuild_es/cel/expr/confor
 import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { Any, MessageType } from '@bufbuild/protobuf';
-import { parse } from '../../parse';
+import { parseAndEval } from '../../parse';
 import { Binding } from '../../types';
 
 declare const it: any;
@@ -47,7 +47,7 @@ export function runTest(testFile: SimpleTestFile) {
           test.resultMatcher.value.kind.value
         ) {
           expect(
-            parse(test.expr, {
+            parseAndEval(test.expr, {
               declarations,
               messageTypes,
               bindings,
@@ -70,7 +70,7 @@ export function runTest(testFile: SimpleTestFile) {
         }
         if (test.resultMatcher.case === 'evalError') {
           expect(
-            parse(test.expr, {
+            parseAndEval(test.expr, {
               declarations,
               messageTypes,
               bindings,

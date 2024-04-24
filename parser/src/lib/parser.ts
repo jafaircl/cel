@@ -2,14 +2,12 @@ import { ErrorSet } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
 import {
   Constant,
   Expr,
-  Expr_CreateList,
   Expr_CreateStruct,
   Expr_CreateStruct_Entry,
-  Expr_Ident,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
 import { Any, NullValue, StringValue } from '@bufbuild/protobuf';
-import { ParseTree, ParserRuleContext } from 'antlr4';
+import { ParseTree, ParserRuleContext, Token } from 'antlr4';
 import { ExpressionBalancer } from './balancer';
 import {
   RESERVED_IDS,
@@ -35,7 +33,9 @@ import {
   ExprContext,
   ExprListContext,
   IdentOrGlobalCallContext,
+  IndexContext,
   IntContext,
+  LogicalNotContext,
   MemberCallContext,
   MemberExprContext,
   NegateContext,
@@ -49,6 +49,7 @@ import {
   UintContext,
 } from './gen/CELParser';
 import GeneratedCelVisitor from './gen/CELVisitor';
+import { expandMacro, findMacro } from './macros';
 import { Operator, getOperatorFromText } from './operator';
 import { isNil } from './util';
 
@@ -62,7 +63,12 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   #exprId = BigInt(1);
   public readonly errors = new ErrorSet();
 
-  constructor() {
+  constructor(
+    private readonly options?: {
+      enableOptionalSyntax?: boolean;
+      retainRepeatedUnaryOperators?: boolean;
+    }
+  ) {
     super();
   }
 
@@ -254,6 +260,46 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   // TODO: visitLogicalNot
+  override visitLogicalNot = (ctx: LogicalNotContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx.member())) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no member expr context',
+        })
+      );
+    }
+    if (!isNil(ctx._ops) && this.options?.retainRepeatedUnaryOperators) {
+      let expr = this.visit(ctx.member());
+      for (let i = ctx._ops.length; i > 0; --i) {
+        expr = new Expr({
+          id: this.#exprId++,
+          exprKind: {
+            case: 'callExpr',
+            value: {
+              function: Operator.LOGICAL_NOT,
+              args: [expr],
+            },
+          },
+        });
+      }
+      return expr;
+    } else if (isNil(ctx._ops) || ctx._ops.length % 2 === 0) {
+      return this.visit(ctx.member());
+    }
+    const member = this.visit(ctx.member());
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: Operator.LOGICAL_NOT,
+          args: [member],
+        },
+      },
+    });
+  };
 
   override visitNegate = (ctx: NegateContext) => {
     this._checkNotNil(ctx);
@@ -384,49 +430,39 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       return member;
     }
     const id = ctx._id.text;
-    const args = this.visit(ctx.exprList()).exprKind.value as Expr_CreateList;
-    const operator = getOperatorFromText(id);
-    switch (operator) {
-      case Operator.ALL:
-      case Operator.EXISTS:
-      case Operator.FILTER:
-      case Operator.MAP:
-        return new Expr({
-          id: this.#exprId++,
-          exprKind: {
-            case: 'comprehensionExpr',
-            value: {
-              iterVar: (args.elements[0].exprKind.value as Expr_Ident).name,
-              iterRange: member,
-              loopStep: new Expr({
-                id: this.#exprId++,
-                exprKind: {
-                  case: 'callExpr',
-                  value: {
-                    function: operator,
-                    args: [args.elements[1]],
-                  },
-                },
-              }),
-            },
-          },
-        });
-      default:
-        return new Expr({
-          id: this.#exprId++,
-          exprKind: {
-            case: 'callExpr',
-            value: {
-              function: id,
-              args: args.elements,
-              target: member,
-            },
-          },
-        });
-    }
+    return this._receiverCallOrMacro(ctx, id, member);
   };
 
-  // TODO: visitIndex
+  override visitIndex = (ctx: IndexContext) => {
+    this._checkNotNil(ctx);
+    if (isNil(ctx.member()) || isNil(ctx._index)) {
+      return this._ensureErrorsExist(
+        new Status({
+          code: 1,
+          message: 'no index context',
+        })
+      );
+    }
+    const member = this.visit(ctx.member());
+    const index = this.visit(ctx._index);
+    let operatorIndex = Operator.INDEX;
+    if (!isNil(ctx._op) && ctx._op.text === '?') {
+      if (!this.options?.enableOptionalSyntax) {
+        return this._reportError(ctx, "unsupported syntax '[?]'");
+      }
+      operatorIndex = Operator.OPTIONAL_INDEX;
+    }
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: operatorIndex,
+          args: [member, index],
+        },
+      },
+    });
+  };
 
   override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext) => {
     this._checkNotNil(ctx);
@@ -452,17 +488,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         },
       });
     }
-    const args = this.visitExprList(ctx.exprList());
-    return new Expr({
-      id: this.#exprId++,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: id,
-          args: (args.exprKind.value as Expr_CreateList).elements,
-        },
-      },
-    });
+    return this._globalCallOrMacro(ctx, id);
   };
 
   override visitExprList = (ctx: ExprListContext) => {
@@ -793,5 +819,58 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     }
 
     return tree;
+  }
+
+  private _receiverCallOrMacro(
+    ctx: MemberCallContext,
+    id: string,
+    member: Expr
+  ) {
+    return this._macroOrCall(ctx._args, ctx._open, id, member, true);
+  }
+
+  private _globalCallOrMacro(ctx: IdentOrGlobalCallContext, id: string) {
+    return this._macroOrCall(ctx._args, ctx._op, id, undefined, false);
+  }
+
+  private _macroOrCall(
+    args: ExprListContext,
+    open: Token,
+    id: string,
+    member?: Expr,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    isReceiverStyle?: boolean
+  ) {
+    const macro = findMacro(id);
+    const _arguments =
+      args != null
+        ? this.visitExprList(args)
+        : new Expr({
+            exprKind: {
+              case: 'listExpr',
+              value: {
+                elements: [],
+              },
+            },
+          });
+    const _args =
+      _arguments.exprKind.case === 'listExpr'
+        ? _arguments.exprKind.value.elements
+        : [];
+    if (macro) {
+      return expandMacro(macro, member as Expr, _args);
+    }
+
+    return new Expr({
+      id: this.#exprId++,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: id,
+          args: _args,
+          target: member,
+        },
+      },
+    });
   }
 }

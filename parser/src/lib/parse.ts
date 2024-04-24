@@ -29,7 +29,7 @@ export interface ParseOptions {
 }
 
 /**
- * Helper function to parse and evaluate an expression.
+ * Helper function to parse  an expression.
  *
  * @param expr the expression to parse
  * @param options the options to use for parsing
@@ -46,6 +46,26 @@ export function parse(expr: string, options?: ParseOptions) {
     isNil(options?.check) ? false : options?.check
   );
   const program = environment.program(ast);
+  return program.parse();
+}
+
+/**
+ * Helper function to parse and evaluate an expression.
+ *
+ * @param expr the expression to parse
+ * @param options the options to use for parsing
+ * @returns the result of the expression evaluation
+ */
+export function parseAndEval(expr: string, options?: ParseOptions) {
+  const environment = new CELEnvironment(
+    options?.declarations ?? [],
+    options?.messageTypes ?? [],
+    options?.enumTypes ?? []
+  );
+  const ast = environment.compile(
+    expr,
+    isNil(options?.check) ? false : options?.check
+  );
+  const program = environment.program(ast);
   return program.eval(options?.bindings ?? {});
 }
-Decl;

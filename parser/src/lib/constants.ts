@@ -16,6 +16,7 @@ export const NULL = NullValue.NULL_VALUE;
 export const FALSE = false;
 export const TRUE = true;
 export const ERROR = '<<error>>';
+export const ACCUMULATOR_VAR = '__result__';
 
 /**
  * Parse an integer literal to a Constant.
