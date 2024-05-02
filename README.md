@@ -48,6 +48,13 @@ scripting language is too resource intensive. To get started, try the
     - [Parse and Check](#parse-and-check)
       - [Macros](#macros)
     - [Evaluate](#evaluate)
+    - [Helper Functions](#helper-functions)
+  - [Install](#install)
+  - [Common Questions](#common-questions)
+    - [Why not JavaScript, Lua, or WASM?](#why-not-javascript-lua-or-wasm)
+    - [Do I need to Parse _and_ Check?](#do-i-need-to-parse-and-check)
+    - [Where can I learn more about the language?](#where-can-i-learn-more-about-the-language)
+    - [How can I contribute?](#how-can-i-contribute)
   - [License](#license)
 
 ---
@@ -65,6 +72,7 @@ environment option:
 
 ```typescript
 import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
+import { CELEnvironment } from '@celjs/parser';
 
 const environment = new CELEnvironment([
     Decl.fromJson({
@@ -131,7 +139,7 @@ list and map values.
 tweets.all(t, t.size() <= 140)
 ```
 
-<!-- The `has` macro is useful for unifying field presence testing logic across
+The `has` macro is useful for unifying field presence testing logic across
 protobuf types and dynamic (JSON-like) types.
 
 ```javascript
@@ -141,14 +149,16 @@ has(message.field)
 ```
 
 Both cases traditionally require special syntax at the language level, but
-these features are exposed via macros in CEL. -->
+these features are exposed via macros in CEL.
 
 ### Evaluate
 
 Now, evaluate for fun and profit. The evaluation is thread-safe and side-effect
 free. Many different inputs can be sent to the same `cel.Program` and if fields
 are present in the input, but not referenced in the expression, they are
-ignored.
+ignored. Note that the output of `eval` will be an `ExprValue` object. A helper
+function, `exprValueToNative`, is provided which will convert the expression
+value to a native TypeScript value.
 
 ```typescript
 // The `out` var contains the output of a successful evaluation.
@@ -157,6 +167,69 @@ const out = program.eval({
     group: Value.fromJson({ stringValue: 'acme.co' }),
 })
 console.log(out) // new ExprValue({ kind: { case: 'value', value: { kind: { case: 'boolValue', value: true, }, }, }, })
+console.log(exprValueToNative(out)) // true
+```
+
+### Helper Functions
+
+If your use case involves evaluating the same expression against different variables,
+it is highly suggested to compile and evaluate in separate steps. This will make sure
+that your evaluations are not slowed down by repeatedly compiling the same program. If,
+however, your use case is to use an expression once and discard it, we provide some
+helper functions to deal with those use cases.
+
+`parse` will parse your expression to a CEL `Expr` object.
+
+```typescript
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import { parse } from '@celjs/parser'; 
+
+const parsed = parse('2 + 2');
+parsed === Expr.fromJson({
+  "id": "3",
+  "callExpr": {
+    "function": "_+_",
+    "args": [
+      {
+        "id": "1",
+        "constExpr": {
+          "int64Value": "2"
+        }
+      },
+      {
+        "id": "2",
+        "constExpr": {
+          "int64Value": "2"
+        }
+      }
+    ]
+  }
+})
+```
+
+`parseAndEval` will parse and evaluate your expression and return the result
+as an `ExprValue` object.
+
+```typescript
+import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
+import { parseAndEval } from '@celjs/parser'; 
+
+const evaluated = parseAndEval(`2 + 2`);
+evaluated === ExprValue.fromJson({
+  "value": {
+    "int64Value": "4"
+  }
+})
+```
+
+`parseAndEvalToNative` will parse and evaluate your expression and return the
+result as a native TypeScript value.
+
+```typescript
+import { parseAndEvalToNative } from '@celjs/parser'; 
+
+const native = parseAndEvalToNative(`2 + 2`);
+native === 4
 ```
 
 <!-- #### Partial State
@@ -224,14 +297,11 @@ ERROR: <input>:1:40: undefined field 'undefined'
 
 Both the parsed and checked expressions contain source position information
 about each node that appears in the output AST. This information can be used
-to determine error locations at evaluation time as well.
+to determine error locations at evaluation time as well. -->
 
 ## Install
 
-CEL-Go supports `modules` and uses semantic versioning. For more info
-see the [Go Modules](https://github.com/golang/go/wiki/Modules) docs.
-
-And of course, there is always the option to build from source directly.
+Run `npm install @celjs/parser` to install the package from npm.
 
 ## Common Questions
 
@@ -266,18 +336,19 @@ runtime bindings and error handling to do the right thing.
 * See the [CEL Spec][1] for the specification and conformance test suite.
 * Ask for support on the [CEL Go Discuss][2] Google group.
 
-### Where can I learn more about the internals?
+<!-- ### Where can I learn more about the internals?
 
 * See [GoDoc][6] to learn how to integrate CEL into services written in Go.
 * See the [CEL C++][3] toolchain (under development) for information about how
-  to integrate CEL evaluation into other environments.
+  to integrate CEL evaluation into other environments. -->
 
 ### How can I contribute?
 
-* See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
+<!-- * See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started. -->
+* Pull requests are welcome. A code of conduct and more formal contributing guidelines are coming soon.
 * Use [GitHub Issues][4] to request features or report bugs.
 
-### Some tests don't work with `go test`?
+<!-- ### Some tests don't work with `go test`?
 
 A handful of tests rely on [Bazel][5]. In particular dynamic proto support
 at check time and the conformance test driver require Bazel to coordinate
@@ -294,8 +365,8 @@ Released under the [Apache License](LICENSE).
 Disclaimer: This is not an official Google product.
 
 [1]:  https://github.com/google/cel-spec
-<!-- [2]:  https://groups.google.com/forum/#!forum/cel-go-discuss
+[2]:  https://groups.google.com/forum/#!forum/cel-go-discuss
 [3]:  https://github.com/google/cel-cpp
-[4]:  https://github.com/google/cel-go/issues
+[4]:  https://github.com/jafaircl/cel/issues
 [5]:  https://bazel.build
-[6]:  https://godoc.org/github.com/google/cel-go -->
+[6]:  https://godoc.org/github.com/google/cel-go 

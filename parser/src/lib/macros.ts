@@ -55,7 +55,7 @@ export function expandHasMacro(target: Expr, args: Expr[]): Expr {
     exprKind: {
       case: 'selectExpr',
       value: new Expr_Select({
-        operand: target,
+        operand: arg.exprKind.value.operand,
         field: arg.exprKind.value.field,
         testOnly: true,
       }),

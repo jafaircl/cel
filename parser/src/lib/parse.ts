@@ -1,6 +1,7 @@
 import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { EnumType, MessageType } from '@bufbuild/protobuf';
 import { CELEnvironment } from './environment';
+import { exprValueToNative } from './to-native';
 import { Binding } from './types';
 import { isNil } from './util';
 
@@ -54,7 +55,7 @@ export function parse(expr: string, options?: ParseOptions) {
  *
  * @param expr the expression to parse
  * @param options the options to use for parsing
- * @returns the result of the expression evaluation
+ * @returns the result of the expression evaluation as an ExprValue object
  */
 export function parseAndEval(expr: string, options?: ParseOptions) {
   const environment = new CELEnvironment(
@@ -68,4 +69,16 @@ export function parseAndEval(expr: string, options?: ParseOptions) {
   );
   const program = environment.program(ast);
   return program.eval(options?.bindings ?? {});
+}
+
+/**
+ * Helper function to parse and evaluate an expression.
+ *
+ * @param expr the expression to parse
+ * @param options the options to use for parsing
+ * @returns the result of the expression evaluation as a native TypeScript value
+ */
+export function parseAndEvalToNative(expr: string, options?: ParseOptions) {
+  const evaluated = parseAndEval(expr, options);
+  return exprValueToNative(evaluated);
 }

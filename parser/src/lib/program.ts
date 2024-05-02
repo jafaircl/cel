@@ -137,6 +137,28 @@ export class CELProgram {
     }
     const operand = this._evalInternal(select.operand, bindings);
     switch (operand.kind.case) {
+      case 'mapValue':
+        const mapValue = operand.kind.value.entries.find(
+          (entry) => entry.key?.kind.value === select.field
+        );
+        if (select.testOnly) {
+          return new Value({
+            kind: {
+              case: 'boolValue',
+              value: !!mapValue?.value?.kind.value,
+            },
+          });
+        }
+        if (!mapValue) {
+          this.#errors.errors.push(
+            new Status({
+              code: 0,
+              message: `unknown field '${select.field}'`,
+            })
+          );
+          return this.#ERROR;
+        }
+        return mapValue.value as Value;
       case 'objectValue':
         const message = operand.kind.value.unpack(this.registry);
         if (!message) {

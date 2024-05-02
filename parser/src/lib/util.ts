@@ -3,6 +3,8 @@ import {
   Expr,
   Expr_Ident,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
+import { NullValue } from '@bufbuild/protobuf';
 import { ParserRuleContext } from 'antlr4';
 
 export function uniqueIdFromContext(ctx: ParserRuleContext) {
@@ -66,6 +68,15 @@ export function boolExpr(value: boolean) {
   });
 }
 
+export function boolValue(value: boolean) {
+  return new Value({
+    kind: {
+      case: 'boolValue',
+      value,
+    },
+  });
+}
+
 export function int64Constant(value: bigint) {
   return new Constant({
     constantKind: {
@@ -80,6 +91,15 @@ export function int64Expr(value: bigint) {
     exprKind: {
       case: 'constExpr',
       value: int64Constant(value),
+    },
+  });
+}
+
+export function int64Value(value: bigint) {
+  return new Value({
+    kind: {
+      case: 'int64Value',
+      value,
     },
   });
 }
@@ -102,6 +122,15 @@ export function uint64Expr(value: bigint) {
   });
 }
 
+export function uint64Value(value: bigint) {
+  return new Value({
+    kind: {
+      case: 'uint64Value',
+      value,
+    },
+  });
+}
+
 export function doubleConstant(value: number) {
   return new Constant({
     constantKind: {
@@ -116,6 +145,15 @@ export function doubleExpr(value: number) {
     exprKind: {
       case: 'constExpr',
       value: doubleConstant(value),
+    },
+  });
+}
+
+export function doubleValue(value: number) {
+  return new Value({
+    kind: {
+      case: 'doubleValue',
+      value,
     },
   });
 }
@@ -138,6 +176,15 @@ export function stringExpr(value: string) {
   });
 }
 
+export function stringValue(value: string) {
+  return new Value({
+    kind: {
+      case: 'stringValue',
+      value,
+    },
+  });
+}
+
 export function bytesConstant(value: Uint8Array) {
   return new Constant({
     constantKind: {
@@ -155,6 +202,36 @@ export function bytesExpr(value: Uint8Array) {
     },
   });
 }
+
+export function bytesValue(value: Uint8Array) {
+  return new Value({
+    kind: {
+      case: 'bytesValue',
+      value,
+    },
+  });
+}
+
+export const NULL_CONSTANT = new Constant({
+  constantKind: {
+    case: 'nullValue',
+    value: NullValue.NULL_VALUE,
+  },
+});
+
+export const NULL_EXPR = new Expr({
+  exprKind: {
+    case: 'constExpr',
+    value: NULL_CONSTANT,
+  },
+});
+
+export const NULL_VALUE = new Value({
+  kind: {
+    case: 'nullValue',
+    value: NullValue.NULL_VALUE,
+  },
+});
 
 export function identExpr(name: string) {
   return new Expr({

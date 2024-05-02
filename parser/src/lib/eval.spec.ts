@@ -71,4 +71,20 @@ describe('eval', () => {
       })
     );
   });
+
+  it('has map key', () => {
+    expect(parseAndEval('has({"a": 1, "b": 2}.a)')).toEqual(
+      new ExprValue({
+        kind: {
+          case: 'value',
+          value: new Value({
+            kind: {
+              case: 'boolValue',
+              value: true,
+            },
+          }),
+        },
+      })
+    );
+  });
 });

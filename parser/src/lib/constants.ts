@@ -1,5 +1,4 @@
 import { Constant } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
-import { NullValue } from '@bufbuild/protobuf';
 import { ParseException } from './exceptions';
 
 const DOUBLE_QUOTE = `"`;
@@ -12,7 +11,6 @@ const MAX_CODE_POINT = 0x10ffff;
 const MIN_SURROGATE = 0xd800;
 const MAX_SURROGATE = 0xdfff;
 
-export const NULL = NullValue.NULL_VALUE;
 export const FALSE = false;
 export const TRUE = true;
 export const ERROR = '<<error>>';
