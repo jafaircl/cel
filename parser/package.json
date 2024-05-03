@@ -1,6 +1,6 @@
 {
   "name": "@celjs/parser",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "dependencies": {
     "@buf/google_cel-spec.bufbuild_es": "^1.6.0-20231211223032-f53499f1d3a9.1",
     "@bufbuild/protobuf": "^1.6.0",
@@ -12,5 +12,7 @@
   },
   "main": "./index.js",
   "module": "./index.mjs",
-  "typings": "./index.d.ts"
+  "typings": "./index.d.ts",
+  "homepage": "https://github.com/jafaircl/cel",
+  "readme": "https://github.com/jafaircl/cel/blob/main/README.md"
 }
