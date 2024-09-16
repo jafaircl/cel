@@ -1,10 +1,12 @@
 import {
-  Constant,
+  ConstantSchema,
   Expr,
-  Expr_Ident,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
-import { NullValue } from '@bufbuild/protobuf';
+  ExprSchema,
+  Expr_IdentSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { create } from '@bufbuild/protobuf';
+import { NullValue } from '@bufbuild/protobuf/wkt';
 import { ParserRuleContext } from 'antlr4';
 
 export function uniqueIdFromContext(ctx: ParserRuleContext) {
@@ -51,7 +53,7 @@ export function isNil(value: unknown): value is null | undefined {
 }
 
 export function boolConstant(value: boolean) {
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'boolValue',
       value,
@@ -60,7 +62,7 @@ export function boolConstant(value: boolean) {
 }
 
 export function boolExpr(value: boolean) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'constExpr',
       value: boolConstant(value),
@@ -69,7 +71,7 @@ export function boolExpr(value: boolean) {
 }
 
 export function boolValue(value: boolean) {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value,
@@ -78,7 +80,7 @@ export function boolValue(value: boolean) {
 }
 
 export function int64Constant(value: bigint) {
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'int64Value',
       value,
@@ -87,7 +89,7 @@ export function int64Constant(value: bigint) {
 }
 
 export function int64Expr(value: bigint) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'constExpr',
       value: int64Constant(value),
@@ -96,7 +98,7 @@ export function int64Expr(value: bigint) {
 }
 
 export function int64Value(value: bigint) {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'int64Value',
       value,
@@ -105,7 +107,7 @@ export function int64Value(value: bigint) {
 }
 
 export function uint64Constant(value: bigint) {
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'uint64Value',
       value,
@@ -114,7 +116,7 @@ export function uint64Constant(value: bigint) {
 }
 
 export function uint64Expr(value: bigint) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'constExpr',
       value: uint64Constant(value),
@@ -123,7 +125,7 @@ export function uint64Expr(value: bigint) {
 }
 
 export function uint64Value(value: bigint) {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'uint64Value',
       value,
@@ -132,7 +134,7 @@ export function uint64Value(value: bigint) {
 }
 
 export function doubleConstant(value: number) {
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'doubleValue',
       value,
@@ -141,7 +143,7 @@ export function doubleConstant(value: number) {
 }
 
 export function doubleExpr(value: number) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'constExpr',
       value: doubleConstant(value),
@@ -150,7 +152,7 @@ export function doubleExpr(value: number) {
 }
 
 export function doubleValue(value: number) {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'doubleValue',
       value,
@@ -159,7 +161,7 @@ export function doubleValue(value: number) {
 }
 
 export function stringConstant(value: string) {
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'stringValue',
       value,
@@ -168,7 +170,7 @@ export function stringConstant(value: string) {
 }
 
 export function stringExpr(value: string) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'constExpr',
       value: stringConstant(value),
@@ -177,7 +179,7 @@ export function stringExpr(value: string) {
 }
 
 export function stringValue(value: string) {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'stringValue',
       value,
@@ -186,7 +188,7 @@ export function stringValue(value: string) {
 }
 
 export function bytesConstant(value: Uint8Array) {
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'bytesValue',
       value,
@@ -195,7 +197,7 @@ export function bytesConstant(value: Uint8Array) {
 }
 
 export function bytesExpr(value: Uint8Array) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'constExpr',
       value: bytesConstant(value),
@@ -204,7 +206,7 @@ export function bytesExpr(value: Uint8Array) {
 }
 
 export function bytesValue(value: Uint8Array) {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'bytesValue',
       value,
@@ -212,21 +214,21 @@ export function bytesValue(value: Uint8Array) {
   });
 }
 
-export const NULL_CONSTANT = new Constant({
+export const NULL_CONSTANT = create(ConstantSchema, {
   constantKind: {
     case: 'nullValue',
     value: NullValue.NULL_VALUE,
   },
 });
 
-export const NULL_EXPR = new Expr({
+export const NULL_EXPR = create(ExprSchema, {
   exprKind: {
     case: 'constExpr',
     value: NULL_CONSTANT,
   },
 });
 
-export const NULL_VALUE = new Value({
+export const NULL_VALUE = create(ValueSchema, {
   kind: {
     case: 'nullValue',
     value: NullValue.NULL_VALUE,
@@ -234,10 +236,10 @@ export const NULL_VALUE = new Value({
 });
 
 export function identExpr(name: string) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'identExpr',
-      value: new Expr_Ident({
+      value: create(Expr_IdentSchema, {
         name,
       }),
     },
@@ -245,7 +247,7 @@ export function identExpr(name: string) {
 }
 
 export function globalCall(functionName: string, ...args: Expr[]) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'callExpr',
       value: {
@@ -257,7 +259,7 @@ export function globalCall(functionName: string, ...args: Expr[]) {
 }
 
 export function listExpr(exprs: Expr[]) {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'listExpr',
       value: {

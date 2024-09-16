@@ -1,25 +1,32 @@
-import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { EnumType, MessageType, createRegistry } from '@bufbuild/protobuf';
+import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import {
+  MutableRegistry,
+  Registry,
+  createMutableRegistry,
+} from '@bufbuild/protobuf';
 import { CharStream, CommonTokenStream } from 'antlr4';
 import CELLexer from './gen/CELLexer';
 import CELParser, { StartContext } from './gen/CELParser';
 import { CELProgram } from './program';
 import { base_messages } from './types';
 
-export class CELEnvironment {
-  #registry: ReturnType<typeof createRegistry>;
+export interface CELEnvironmentOptions {
+  declarations?: Decl[];
+  registry?: Registry;
+  container?: string;
+}
 
-  constructor(
-    public readonly declarations: Decl[] = [],
-    public readonly messageTypes: MessageType[] = [],
-    public readonly enumTypes: EnumType[] = []
-  ) {
-    // TODO: validate declarationss
-    this.#registry = createRegistry(
-      ...base_messages,
-      ...messageTypes,
-      ...enumTypes
-    );
+export class CELEnvironment {
+  #registry: MutableRegistry;
+
+  constructor(public readonly options?: CELEnvironmentOptions) {
+    // TODO: validate declarations
+    this.#registry = createMutableRegistry(...base_messages);
+    if (options?.registry) {
+      for (const desc of options.registry) {
+        this.#registry.add(desc);
+      }
+    }
   }
 
   compile(input: string, check = false) {
@@ -39,6 +46,6 @@ export class CELEnvironment {
   }
 
   program(ast: StartContext) {
-    return new CELProgram(ast, this.#registry);
+    return new CELProgram(ast, this.#registry, this.options?.container);
   }
 }

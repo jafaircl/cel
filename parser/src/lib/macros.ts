@@ -1,7 +1,9 @@
 import {
   Expr,
-  Expr_Select,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+  ExprSchema,
+  Expr_SelectSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { create } from '@bufbuild/protobuf';
 import { ACCUMULATOR_VAR } from './constants';
 import { Operator } from './operator';
 import {
@@ -51,10 +53,10 @@ export function expandHasMacro(target: Expr, args: Expr[]): Expr {
   if (arg.exprKind.case !== 'selectExpr') {
     throw new Error('Invalid argument to has() macro');
   }
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'selectExpr',
-      value: new Expr_Select({
+      value: create(Expr_SelectSchema, {
         operand: arg.exprKind.value.operand,
         field: arg.exprKind.value.field,
         testOnly: true,
@@ -230,7 +232,7 @@ function fold(
   step: Expr,
   result: Expr
 ): Expr {
-  return new Expr({
+  return create(ExprSchema, {
     exprKind: {
       case: 'comprehensionExpr',
       value: {

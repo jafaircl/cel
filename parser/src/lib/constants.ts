@@ -1,4 +1,5 @@
-import { Constant } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import { ConstantSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { create } from '@bufbuild/protobuf';
 import { ParseException } from './exceptions';
 
 const DOUBLE_QUOTE = `"`;
@@ -39,7 +40,7 @@ export function parseIntConstant(text: string) {
       0
     );
   }
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'int64Value',
       value,
@@ -78,7 +79,7 @@ export function parseUintConstant(text: string) {
       0
     );
   }
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'uint64Value',
       value,
@@ -106,7 +107,7 @@ export function parseDoubleConstant(text: string) {
       0
     );
   }
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'doubleValue',
       value,
@@ -296,7 +297,7 @@ class Output {
 export class StringBuilder {
   private value: string;
 
-  constructor(initialValue: string = '') {
+  constructor(initialValue = '') {
     this.value = initialValue;
   }
 
@@ -638,7 +639,7 @@ export function parseStringConstant(text: string) {
   const buffer = new DecodeStringBuffer();
   decodeString(offset, text, buffer, isRawLiteral, false);
 
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'stringValue',
       value: buffer.toDecodedValue(),
@@ -709,7 +710,7 @@ export function parseBytesConstant(text: string) {
   const buffer = new DecodeByteStringBuffer(text.length);
   decodeString(offset, text, buffer, isRawLiteral, true);
 
-  return new Constant({
+  return create(ConstantSchema, {
     constantKind: {
       case: 'bytesValue',
       value: buffer.toDecodedValue().toUint8Array(),

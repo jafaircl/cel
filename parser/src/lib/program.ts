@@ -1,8 +1,9 @@
 /* eslint-disable no-case-declarations */
 import {
-  ErrorSet,
+  ErrorSetSchema,
   ExprValue,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
+  ExprValueSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
 import {
   Constant,
   Expr,
@@ -12,27 +13,41 @@ import {
   Expr_CreateStruct,
   Expr_Ident,
   Expr_Select,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import {
   MapValue_Entry,
+  MapValue_EntrySchema,
   Value,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
-import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
+  ValueSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { StatusSchema } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb.js';
+import { create, createRegistry } from '@bufbuild/protobuf';
 import {
   Any,
+  AnySchema,
   BoolValue,
+  BoolValueSchema,
   BytesValue,
+  BytesValueSchema,
   DoubleValue,
-  FieldInfo,
+  DoubleValueSchema,
   FloatValue,
+  FloatValueSchema,
   Int32Value,
+  Int32ValueSchema,
   Int64Value,
+  Int64ValueSchema,
   NullValue,
+  NullValueSchema,
   StringValue,
+  StringValueSchema,
   UInt32Value,
+  UInt32ValueSchema,
   UInt64Value,
-  createRegistry,
-} from '@bufbuild/protobuf';
+  UInt64ValueSchema,
+  anyPack,
+  anyUnpack,
+} from '@bufbuild/protobuf/wkt';
 import { ACCUMULATOR_VAR } from './constants';
 import { base_functions } from './functions';
 import { StartContext } from './gen/CELParser';
@@ -41,7 +56,7 @@ import { Binding } from './types';
 import { isNil } from './util';
 
 export class CELProgram {
-  #ERROR = new Value({
+  #ERROR = create(ValueSchema, {
     kind: {
       case: 'stringValue',
       value: '<<error>>',
@@ -49,18 +64,19 @@ export class CELProgram {
   });
   #bindings: Record<string, Binding> = {
     ...base_functions,
-    [ACCUMULATOR_VAR]: new Value({
+    [ACCUMULATOR_VAR]: create(ValueSchema, {
       kind: {
         case: 'nullValue',
         value: NullValue.NULL_VALUE,
       },
     }),
   };
-  #errors = new ErrorSet();
+  #errors = create(ErrorSetSchema);
 
   constructor(
     private readonly ast: StartContext,
-    private readonly registry: ReturnType<typeof createRegistry>
+    private readonly registry: ReturnType<typeof createRegistry>,
+    private readonly container = ''
   ) {}
 
   parse() {
@@ -73,7 +89,7 @@ export class CELProgram {
     const parser = new CELParser();
     const intermediateResult = this.ast.accept(parser);
     if (parser.errors.errors.length > 0) {
-      return new ExprValue({
+      return create(ExprValueSchema, {
         kind: {
           case: 'error',
           value: parser.errors,
@@ -86,14 +102,14 @@ export class CELProgram {
       this.#errors.errors.length > 0 &&
       value.kind.value === this.#ERROR.kind.value
     ) {
-      return new ExprValue({
+      return create(ExprValueSchema, {
         kind: {
           case: 'error',
           value: this.#errors,
         },
       });
     }
-    return new ExprValue({
+    return create(ExprValueSchema, {
       kind: {
         case: 'value',
         value,
@@ -128,7 +144,7 @@ export class CELProgram {
   ): Value {
     if (!select.operand) {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: 'missing operand',
         })
@@ -142,7 +158,7 @@ export class CELProgram {
           (entry) => entry.key?.kind.value === select.field
         );
         if (select.testOnly) {
-          return new Value({
+          return create(ValueSchema, {
             kind: {
               case: 'boolValue',
               value: !!mapValue?.value?.kind.value,
@@ -151,7 +167,7 @@ export class CELProgram {
         }
         if (!mapValue) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: `unknown field '${select.field}'`,
             })
@@ -160,20 +176,23 @@ export class CELProgram {
         }
         return mapValue.value as Value;
       case 'objectValue':
-        const message = operand.kind.value.unpack(this.registry);
+        const message = anyUnpack(operand.kind.value, this.registry);
         if (!message) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: 'cannot unpack message',
             })
           );
           return this.#ERROR;
         }
-        const field = message.getType().fields.findJsonName(select.field);
+        const messageDesc = this.registry.getMessage(message.$typeName);
+        const field = messageDesc?.fields.find(
+          (field) => field.jsonName === select.field
+        );
         if (!field) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: `unknown field '${select.field}'`,
             })
@@ -184,7 +203,7 @@ export class CELProgram {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const value = (message as any)[field.name];
         if (!value) {
-          return new Value({
+          return create(ValueSchema, {
             kind: {
               case: 'nullValue',
               value: NullValue.NULL_VALUE,
@@ -202,110 +221,144 @@ export class CELProgram {
     struct: Expr_CreateStruct,
     bindings: Record<string, Binding>
   ) {
-    if (struct.messageName !== '') {
+    if (struct.messageName && struct.messageName !== '') {
       // This is a message, not a struct
-      const messageType = this.registry.findMessage(struct.messageName);
-      if (!messageType) {
+      let messageDesc = this.registry.getMessage(struct.messageName);
+      // If a message isn't found, try to find one in the container
+      if (!messageDesc && this.container) {
+        const typeName = `${this.container ? `${this.container}.` : ''}${
+          struct.messageName
+        }`;
+        messageDesc = this.registry.getMessage(typeName);
+      }
+      // If there's still no message, push an error
+      if (!messageDesc) {
         this.#errors.errors.push(
-          new Status({
+          create(StatusSchema, {
             code: 0,
             message: `unknown message type '${struct.messageName}'`,
           })
         );
         return this.#ERROR;
       }
-      const message = new messageType();
+      const message = create(messageDesc);
       for (const entry of struct.entries) {
         const key = entry.keyKind.value as string;
         const value = this._evalInternal(entry.value as Expr, bindings);
-        const field = messageType.fields
-          .list()
-          .find((f) => f.name === key) as FieldInfo;
-        message[field.jsonName] = value.kind.value;
+        const field = messageDesc.fields.find((f) => f.name === key);
+        if (!field) {
+          continue;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (message as any)[field.jsonName] = value.kind.value;
       }
-      switch (messageType.typeName) {
-        case BoolValue.typeName:
-          return new Value({
+      switch (messageDesc.typeName) {
+        case BoolValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'boolValue',
               value: (message as BoolValue).value,
             },
           });
-        case BytesValue.typeName:
-          return new Value({
+        case BytesValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'bytesValue',
               value: (message as BytesValue).value,
             },
           });
-        case DoubleValue.typeName:
-          return new Value({
+        case DoubleValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'doubleValue',
               value: (message as DoubleValue).value,
             },
           });
-        case FloatValue.typeName:
-          return new Value({
+        case FloatValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'doubleValue',
               value: (message as FloatValue).value,
             },
           });
-        case Int32Value.typeName:
-          return new Value({
+        case Int32ValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'doubleValue',
               value: (message as Int32Value).value,
             },
           });
-        case Int64Value.typeName:
-          return new Value({
+        case Int64ValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'int64Value',
               value: (message as Int64Value).value,
             },
           });
-        case StringValue.typeName:
-          return new Value({
+        case StringValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'stringValue',
               value: (message as StringValue).value,
             },
           });
-        case UInt32Value.typeName:
-          return new Value({
+        case UInt32ValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'doubleValue',
               value: (message as UInt32Value).value,
             },
           });
-        case UInt64Value.typeName:
-          return new Value({
+        case UInt64ValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
               case: 'uint64Value',
               value: (message as UInt64Value).value,
             },
           });
-        default:
-          return new Value({
+        case NullValueSchema.typeName:
+          return create(ValueSchema, {
             kind: {
-              case: 'objectValue',
-              value: Any.pack(message),
+              case: 'nullValue',
+              value: NullValue.NULL_VALUE,
             },
           });
+        case AnySchema.typeName:
+          return create(ValueSchema, {
+            kind: {
+              case: 'objectValue',
+              value: message as Any,
+            },
+          });
+        default:
+          try {
+            return create(ValueSchema, {
+              kind: {
+                case: 'objectValue',
+                value: anyPack(messageDesc, message),
+              },
+            });
+          } catch (e) {
+            this.#errors.errors.push(
+              create(StatusSchema, {
+                code: 0,
+                message: (e as Error).message,
+              })
+            );
+            return this.#ERROR;
+          }
       }
     }
     const entries: MapValue_Entry[] = [];
     for (const entry of struct.entries) {
       entries.push(
-        new MapValue_Entry({
+        create(MapValue_EntrySchema, {
           key: this._evalInternal(entry.keyKind.value as Expr, bindings),
           value: this._evalInternal(entry.value as Expr, bindings),
         })
       );
     }
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'mapValue',
         value: {
@@ -320,7 +373,7 @@ export class CELProgram {
     for (const value of list.elements) {
       values.push(this._evalInternal(value as Expr, bindings));
     }
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'listValue',
         value: {
@@ -338,7 +391,7 @@ export class CELProgram {
     const binding = bindings[ident.name];
     if (!binding) {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: `undeclared reference to '${ident.name}' (in container '')`,
         })
@@ -354,7 +407,7 @@ export class CELProgram {
     const fn = bindings[expr.function] as Function;
     if (!fn) {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: 'unbound function',
         })
@@ -374,7 +427,7 @@ export class CELProgram {
       return fn(...args);
     } catch (e) {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: (e as Error).message,
         })
@@ -389,7 +442,7 @@ export class CELProgram {
   ): Value {
     if (isNil(expr.iterRange)) {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: 'missing iterRange',
         })
@@ -398,7 +451,7 @@ export class CELProgram {
     }
     if (expr.loopStep?.exprKind.case !== 'callExpr') {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: 'unsupported loopStep',
         })
@@ -415,7 +468,7 @@ export class CELProgram {
       );
     } else {
       this.#errors.errors.push(
-        new Status({
+        create(StatusSchema, {
           code: 0,
           message: 'expected a list or a map for iteration range',
         })
@@ -424,7 +477,7 @@ export class CELProgram {
     }
     let accuValue = expr.accuInit
       ? this._evalInternal(expr.accuInit, bindings)
-      : new Value({
+      : create(ValueSchema, {
           kind: {
             case: 'nullValue',
             value: NullValue.NULL_VALUE,
@@ -470,7 +523,7 @@ export class CELProgram {
       case 'int64Value':
       case 'uint64Value':
       case 'stringValue':
-        return new Value({
+        return create(ValueSchema, {
           kind: {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             case: constant.constantKind.case as any,
@@ -489,7 +542,7 @@ export class CELProgram {
       case 'int64Value':
         if (value.kind.value < -BigInt('9223372036854775808')) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: 'return error for overflow',
             })
@@ -498,7 +551,7 @@ export class CELProgram {
         }
         if (value.kind.value > BigInt('9223372036854775807')) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: 'return error for overflow',
             })
@@ -509,7 +562,7 @@ export class CELProgram {
       case 'uint64Value':
         if (value.kind.value < 0) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: 'return error for overflow',
             })
@@ -518,7 +571,7 @@ export class CELProgram {
         }
         if (value.kind.value > BigInt('9223372036854775807')) {
           this.#errors.errors.push(
-            new Status({
+            create(StatusSchema, {
               code: 0,
               message: 'return error for overflow',
             })

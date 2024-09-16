@@ -1,7 +1,10 @@
 import {
   ListValue,
   Value,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
+  ValueSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { create, equals as protoEquals } from '@bufbuild/protobuf';
+import { AnySchema } from '@bufbuild/protobuf/wkt';
 import { Operator } from './operator';
 
 /**
@@ -107,14 +110,14 @@ export function logicalOr(x: Value, y: Value) {
 export function negate(x: Value): Value {
   switch (x.kind.case) {
     case 'doubleValue':
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'doubleValue',
           value: -x.kind.value,
         },
       });
     case 'int64Value':
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'int64Value',
           value: -x.kind.value,
@@ -132,7 +135,7 @@ export function equals(x: Value, y: Value): Value {
         throw new Error('no such overload');
       }
       if (x.kind.value.values.length !== y.kind.value.values.length) {
-        return new Value({
+        return create(ValueSchema, {
           kind: {
             case: 'boolValue',
             value: false,
@@ -143,7 +146,7 @@ export function equals(x: Value, y: Value): Value {
         if (
           !equals(x.kind.value.values[i], y.kind.value.values[i]).kind.value
         ) {
-          return new Value({
+          return create(ValueSchema, {
             kind: {
               case: 'boolValue',
               value: false,
@@ -151,7 +154,7 @@ export function equals(x: Value, y: Value): Value {
           });
         }
       }
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'boolValue',
           value: true,
@@ -162,7 +165,7 @@ export function equals(x: Value, y: Value): Value {
         throw new Error('no such overload');
       }
       if (x.kind.value.entries.length !== y.kind.value.entries.length) {
-        return new Value({
+        return create(ValueSchema, {
           kind: {
             case: 'boolValue',
             value: false,
@@ -172,10 +175,10 @@ export function equals(x: Value, y: Value): Value {
       // eslint-disable-next-line no-case-declarations
       const sortedXMapEntries = [...x.kind.value.entries].sort((a, b) => {
         if (
-          a.key!.kind.case === 'stringValue' &&
-          b.key!.kind.case === 'stringValue'
+          a.key?.kind.case === 'stringValue' &&
+          b.key?.kind.case === 'stringValue'
         ) {
-          return a.key!.kind.value.localeCompare(b.key!.kind.value);
+          return a.key?.kind.value.localeCompare(b.key.kind.value);
         }
         return 0;
       });
@@ -197,7 +200,7 @@ export function equals(x: Value, y: Value): Value {
           !equals(sortedXMapEntries[i].value!, sortedYMapEntries[i].value!).kind
             .value
         ) {
-          return new Value({
+          return create(ValueSchema, {
             kind: {
               case: 'boolValue',
               value: false,
@@ -205,7 +208,7 @@ export function equals(x: Value, y: Value): Value {
           });
         }
       }
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'boolValue',
           value: true,
@@ -213,39 +216,39 @@ export function equals(x: Value, y: Value): Value {
       });
     case 'objectValue':
       if (y.kind.case !== 'objectValue') {
-        return new Value({
+        return create(ValueSchema, {
           kind: {
             case: 'boolValue',
             value: false,
           },
         });
       }
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'boolValue',
-          value: x.kind.value.equals(y.kind.value),
+          value: protoEquals(AnySchema, x.kind.value, y.kind.value),
         },
       });
     default:
       if (x.kind.case === 'nullValue' || y.kind.case === 'nullValue') {
-        return new Value({
+        return create(ValueSchema, {
           kind: {
             case: 'boolValue',
             value: x.kind.case === y.kind.case && x.kind.value === y.kind.value,
           },
         });
       }
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'boolValue',
-          value: x.equals(y) || x.kind.value == y.kind.value,
+          value: protoEquals(ValueSchema, x, y) || x.kind.value == y.kind.value,
         },
       });
   }
 }
 
 export function notEquals(x: Value, y: Value): Value {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: !equals(x, y).kind.value,
@@ -284,7 +287,7 @@ function normalizeNumberValues(x: Value, y: Value) {
 export function greaterThan(x: Value, y: Value): Value {
   assertComparable(x, y);
   const [xValue, yValue] = normalizeNumberValues(x, y);
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: xValue! > yValue!,
@@ -295,7 +298,7 @@ export function greaterThan(x: Value, y: Value): Value {
 export function greaterThanOrEqual(x: Value, y: Value): Value {
   assertComparable(x, y);
   const [xValue, yValue] = normalizeNumberValues(x, y);
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: xValue! >= yValue!,
@@ -306,7 +309,7 @@ export function greaterThanOrEqual(x: Value, y: Value): Value {
 export function lessThan(x: Value, y: Value): Value {
   assertComparable(x, y);
   const [xValue, yValue] = normalizeNumberValues(x, y);
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: xValue! < yValue!,
@@ -317,7 +320,7 @@ export function lessThan(x: Value, y: Value): Value {
 export function lessThanOrEqual(x: Value, y: Value): Value {
   assertComparable(x, y);
   const [xValue, yValue] = normalizeNumberValues(x, y);
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: xValue! <= yValue!,
@@ -330,7 +333,7 @@ export function _in(x: Value, y: Value): Value {
     throw new Error('no such overload');
   }
   if (y.kind.case === 'mapValue') {
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'boolValue',
         value: y.kind.value.entries.some(
@@ -339,7 +342,7 @@ export function _in(x: Value, y: Value): Value {
       },
     });
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: y.kind.value.values.some((value) => equals(x, value).kind.value),
@@ -352,7 +355,7 @@ export function add(x: Value, y: Value): Value {
     if (y.kind.case !== 'listValue') {
       throw new Error('no such overload');
     }
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'listValue',
         value: {
@@ -365,14 +368,14 @@ export function add(x: Value, y: Value): Value {
     if (y.kind.case !== 'bytesValue') {
       throw new Error('no such overload');
     }
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'bytesValue',
         value: new Uint8Array([...x.kind.value, ...y.kind.value]),
       },
     });
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: x.kind.case,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -388,7 +391,7 @@ export function subtract(x: Value, y: Value): Value {
       throw new TypeError(`Expected ListValue, got ${y.kind.case}`);
     }
     const ySet = new Set(y.kind.value.values);
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'listValue',
         value: {
@@ -397,7 +400,7 @@ export function subtract(x: Value, y: Value): Value {
       },
     });
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: x.kind.case,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -407,7 +410,7 @@ export function subtract(x: Value, y: Value): Value {
 }
 
 export function multiply(x: Value, y: Value): Value {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: x.kind.case,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -423,7 +426,7 @@ export function divide(x: Value, y: Value): Value {
   ) {
     throw new Error('divide by zero');
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: x.kind.case,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -454,7 +457,7 @@ export function modulo(x: Value, y: Value): Value {
   ) {
     throw new Error('modulus by zero');
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: x.kind.case,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -466,28 +469,28 @@ export function modulo(x: Value, y: Value): Value {
 export function size(x: Value): Value {
   switch (x.kind.case) {
     case 'listValue':
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'int64Value',
           value: BigInt(x.kind.value.values.length),
         },
       });
     case 'mapValue':
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'int64Value',
           value: BigInt(x.kind.value.entries.length),
         },
       });
     case 'stringValue':
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'int64Value',
           value: BigInt(x.kind.value.length),
         },
       });
     case 'bytesValue':
-      return new Value({
+      return create(ValueSchema, {
         kind: {
           case: 'int64Value',
           value: BigInt(x.kind.value.length),
@@ -503,7 +506,7 @@ export function contains(x: Value, y: Value): Value {
     if (y.kind.case !== 'stringValue') {
       throw new Error('no such overload');
     }
-    return new Value({
+    return create(ValueSchema, {
       kind: {
         case: 'boolValue',
         value: x.kind.value.includes(y.kind.value),
@@ -517,7 +520,7 @@ export function endsWith(str: Value, suffix: Value): Value {
   if (str.kind.case !== 'stringValue' || suffix.kind.case !== 'stringValue') {
     throw new Error('no such overload');
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: str.kind.value.endsWith(suffix.kind.value),
@@ -529,7 +532,7 @@ export function matches(str: Value, regex: Value): Value {
   if (str.kind.case !== 'stringValue' || regex.kind.case !== 'stringValue') {
     throw new Error('no such overload');
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: new RegExp(regex.kind.value).test(str.kind.value),
@@ -541,7 +544,7 @@ export function startsWith(str: Value, prefix: Value): Value {
   if (str.kind.case !== 'stringValue' || prefix.kind.case !== 'stringValue') {
     throw new Error('no such overload');
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: str.kind.value.startsWith(prefix.kind.value),
@@ -550,7 +553,7 @@ export function startsWith(str: Value, prefix: Value): Value {
 }
 
 export function double(x: Value): Value {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'doubleValue',
       value: Number(x.kind.value),
@@ -563,7 +566,7 @@ export function dyn(x: Value): Value {
 }
 
 export function notStrictlyFalse(x: Value): Value {
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'boolValue',
       value: x.kind.value !== false,
@@ -590,7 +593,7 @@ export function index(list: Value, index: Value): Value {
     throw new Error('no_such_overload');
   }
   if (index.kind.case === 'doubleValue' && index.kind.value % 1 !== 0) {
-    throw new Error('invalid argument');
+    throw new Error('invalid_argument');
   }
   for (let i = 0; i < list.kind.value.values.length; i++) {
     switch (index.kind.case) {
@@ -605,7 +608,7 @@ export function index(list: Value, index: Value): Value {
         continue;
     }
   }
-  return new Value({
+  return create(ValueSchema, {
     kind: {
       case: 'int64Value',
       value: BigInt(-1),

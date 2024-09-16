@@ -1,18 +1,19 @@
 import {
-  ErrorSet,
-  ExprValue,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
-import { Status } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb';
+  ErrorSetSchema,
+  ExprValueSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
+import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { StatusSchema } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb.js';
+import { create } from '@bufbuild/protobuf';
 import { parseAndEval } from './parse';
 
 describe('eval', () => {
   it('all helper', () => {
     expect(parseAndEval('[1, 2, 3].all(e, e > 0)')).toEqual(
-      new ExprValue({
+      create(ExprValueSchema, {
         kind: {
           case: 'value',
-          value: new Value({
+          value: create(ValueSchema, {
             kind: {
               case: 'boolValue',
               value: true,
@@ -25,12 +26,12 @@ describe('eval', () => {
 
   it('all helper 2', () => {
     expect(parseAndEval(`[1, 'foo', 3].all(e, e % 2 == 1)`)).toEqual(
-      new ExprValue({
+      create(ExprValueSchema, {
         kind: {
           case: 'error',
-          value: new ErrorSet({
+          value: create(ErrorSetSchema, {
             errors: [
-              new Status({
+              create(StatusSchema, {
                 message: 'no_such_overload',
               }),
             ],
@@ -42,10 +43,10 @@ describe('eval', () => {
 
   it('lists 1', () => {
     expect(parseAndEval('[7, 8, 9][0]')).toEqual(
-      new ExprValue({
+      create(ExprValueSchema, {
         kind: {
           case: 'value',
-          value: new Value({
+          value: create(ValueSchema, {
             kind: {
               case: 'int64Value',
               value: BigInt(7),
@@ -58,10 +59,10 @@ describe('eval', () => {
 
   it('lists size', () => {
     expect(parseAndEval('[7, 8, 9].size()')).toEqual(
-      new ExprValue({
+      create(ExprValueSchema, {
         kind: {
           case: 'value',
-          value: new Value({
+          value: create(ValueSchema, {
             kind: {
               case: 'int64Value',
               value: BigInt(3),
@@ -74,10 +75,10 @@ describe('eval', () => {
 
   it('has map key', () => {
     expect(parseAndEval('has({"a": 1, "b": 2}.a)')).toEqual(
-      new ExprValue({
+      create(ExprValueSchema, {
         kind: {
           case: 'value',
-          value: new Value({
+          value: create(ValueSchema, {
             kind: {
               case: 'boolValue',
               value: true,
