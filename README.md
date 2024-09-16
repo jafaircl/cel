@@ -71,27 +71,28 @@ Let's expose `name` and  `group` variables to CEL using the `cel.Declarations`
 environment option:
 
 ```typescript
-import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
+import { DeclSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { CELEnvironment } from '@celjs/parser';
 
-const environment = new CELEnvironment([
-    Decl.fromJson({
-        name: 'name',
-        ident: {
-            type: {
-                primitive: Type_PrimitiveType.STRING,
-            },
-        },
-    }),
-    Decl.fromJson({
-        name: 'group',
-        ident: {
-            type: {
-                primitive: Type_PrimitiveType.STRING,
-            },
-        },
-    }),
-]);
+const declarations = [
+  fromJson(DeclSchema, {
+    name: 'name',
+    ident: {
+      type: {
+        primitive: Type_PrimitiveType.STRING,
+      },
+    },
+  }),
+  fromJson(DeclSchema, {
+    name: 'group',
+    ident: {
+      type: {
+        primitive: Type_PrimitiveType.STRING,
+      },
+    },
+  }),
+]
+const environment = new CELEnvironment({ declarations });
 ```
 
 That's it. The environment is ready to be used for parsing and type-checking.
@@ -163,8 +164,8 @@ value to a native TypeScript value.
 ```typescript
 // The `out` var contains the output of a successful evaluation.
 const out = program.eval({
-    name: Value.fromJson({ stringValue: '/groups/acme.co/documents/secret-stuff' }),
-    group: Value.fromJson({ stringValue: 'acme.co' }),
+    name: fromJson(ValueSchema, { stringValue: '/groups/acme.co/documents/secret-stuff' }),
+    group: fromJson(ValueSchema, { stringValue: 'acme.co' }),
 })
 console.log(out) // new ExprValue({ kind: { case: 'value', value: { kind: { case: 'boolValue', value: true, }, }, }, })
 console.log(exprValueToNative(out)) // true
@@ -181,11 +182,11 @@ helper functions to deal with those use cases.
 `parse` will parse your expression to a CEL `Expr` object.
 
 ```typescript
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { parse } from '@celjs/parser'; 
 
 const parsed = parse('2 + 2');
-parsed === Expr.fromJson({
+parsed === fromJson(ExprSchema, {
   "id": "3",
   "callExpr": {
     "function": "_+_",
@@ -211,11 +212,11 @@ parsed === Expr.fromJson({
 as an `ExprValue` object.
 
 ```typescript
-import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
+import { ExprValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
 import { parseAndEval } from '@celjs/parser'; 
 
 const evaluated = parseAndEval(`2 + 2`);
-evaluated === ExprValue.fromJson({
+evaluated === fromJson(ExprValueSchema, {
   "value": {
     "int64Value": "4"
   }

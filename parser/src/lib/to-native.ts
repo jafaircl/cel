@@ -1,5 +1,5 @@
-import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
+import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
+import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { NULL_VALUE } from './util';
 
 /**

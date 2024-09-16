@@ -1,53 +1,66 @@
-import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb';
-import { NullValue } from '@bufbuild/protobuf';
+import { ExprValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
+import { fromJson } from '@bufbuild/protobuf';
+import { NullValue } from '@bufbuild/protobuf/wkt';
 import { exprValueToNative } from './to-native';
 
 describe('exprValueToNative', () => {
   it('should convert a boolean value to native', () => {
     expect(
-      exprValueToNative(ExprValue.fromJson({ value: { boolValue: true } }))
+      exprValueToNative(
+        fromJson(ExprValueSchema, { value: { boolValue: true } })
+      )
     ).toEqual(true);
     expect(
-      exprValueToNative(ExprValue.fromJson({ value: { boolValue: false } }))
+      exprValueToNative(
+        fromJson(ExprValueSchema, { value: { boolValue: false } })
+      )
     ).toEqual(false);
   });
 
   it('should convert a bytes value to native', () => {
     expect(
       exprValueToNative(
-        ExprValue.fromJson({ value: { bytesValue: 'aGVsbG8=' } })
+        fromJson(ExprValueSchema, { value: { bytesValue: 'aGVsbG8=' } })
       )
     ).toEqual(new TextEncoder().encode('hello'));
   });
 
   it('should convert a double value to native', () => {
     expect(
-      exprValueToNative(ExprValue.fromJson({ value: { doubleValue: 3.14 } }))
+      exprValueToNative(
+        fromJson(ExprValueSchema, { value: { doubleValue: 3.14 } })
+      )
     ).toEqual(3.14);
   });
 
   it('should convert a int64 value to native', () => {
     expect(
-      exprValueToNative(ExprValue.fromJson({ value: { int64Value: '7' } }))
+      exprValueToNative(
+        fromJson(ExprValueSchema, { value: { int64Value: '7' } })
+      )
     ).toEqual(BigInt(7));
   });
 
   it('should convert a string value to native', () => {
     expect(
-      exprValueToNative(ExprValue.fromJson({ value: { stringValue: 'hello' } }))
+      exprValueToNative(
+        fromJson(ExprValueSchema, { value: { stringValue: 'hello' } })
+      )
     ).toEqual('hello');
   });
 
   it('should convert a uint64 value to native', () => {
     expect(
-      exprValueToNative(ExprValue.fromJson({ value: { uint64Value: '7' } }))
+      exprValueToNative(
+        fromJson(ExprValueSchema, { value: { uint64Value: '7' } })
+      )
     ).toEqual(BigInt(7));
   });
 
   it('should convert an enum value to native', () => {
     expect(
       exprValueToNative(
-        ExprValue.fromJson({ value: { enumValue: { value: 1 } } })
+        fromJson(ExprValueSchema, { value: { enumValue: { value: 1 } } })
       )
     ).toEqual(1);
   });
@@ -55,7 +68,7 @@ describe('exprValueToNative', () => {
   it('should convert a list value to native', () => {
     expect(
       exprValueToNative(
-        ExprValue.fromJson({
+        fromJson(ExprValueSchema, {
           value: {
             listValue: {
               values: [
@@ -73,7 +86,7 @@ describe('exprValueToNative', () => {
   it('should convert a map value to native', () => {
     expect(
       exprValueToNative(
-        ExprValue.fromJson({
+        fromJson(ExprValueSchema, {
           value: {
             mapValue: {
               entries: [
@@ -100,7 +113,9 @@ describe('exprValueToNative', () => {
   it('should convert a null value to native', () => {
     expect(
       exprValueToNative(
-        ExprValue.fromJson({ value: { nullValue: NullValue.NULL_VALUE } })
+        fromJson(ExprValueSchema, {
+          value: { nullValue: NullValue.NULL_VALUE },
+        })
       )
     ).toEqual(null);
   });

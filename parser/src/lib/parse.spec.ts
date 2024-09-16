@@ -1,14 +1,15 @@
 import {
-  Constant,
-  Expr,
-  Expr_Call,
-  Expr_CreateList,
-  Expr_CreateStruct,
-  Expr_CreateStruct_Entry,
-  Expr_Ident,
-  Expr_Select,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
-import { NullValue } from '@bufbuild/protobuf';
+  ConstantSchema,
+  ExprSchema,
+  Expr_CallSchema,
+  Expr_CreateListSchema,
+  Expr_CreateStructSchema,
+  Expr_CreateStruct_EntrySchema,
+  Expr_IdentSchema,
+  Expr_SelectSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { create, fromJson } from '@bufbuild/protobuf';
+import { NullValue } from '@bufbuild/protobuf/wkt';
 import { parse } from './parse';
 
 describe('parse', () => {
@@ -16,11 +17,11 @@ describe('parse', () => {
     const tests = [
       {
         I: '"A"',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'stringValue',
                 value: 'A',
@@ -31,11 +32,11 @@ describe('parse', () => {
       },
       {
         I: 'true',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'boolValue',
                 value: true,
@@ -46,11 +47,11 @@ describe('parse', () => {
       },
       {
         I: 'false',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'boolValue',
                 value: false,
@@ -61,11 +62,11 @@ describe('parse', () => {
       },
       {
         I: '0',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'int64Value',
                 value: BigInt(0),
@@ -76,11 +77,11 @@ describe('parse', () => {
       },
       {
         I: '42',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'int64Value',
                 value: BigInt(42),
@@ -91,11 +92,11 @@ describe('parse', () => {
       },
       {
         I: '0xF',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'int64Value',
                 value: BigInt(15),
@@ -106,11 +107,11 @@ describe('parse', () => {
       },
       {
         I: '0u',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'uint64Value',
                 value: BigInt(0),
@@ -121,11 +122,11 @@ describe('parse', () => {
       },
       {
         I: '23u',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'uint64Value',
                 value: BigInt(23),
@@ -136,11 +137,11 @@ describe('parse', () => {
       },
       {
         I: '24u',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'uint64Value',
                 value: BigInt(24),
@@ -151,11 +152,11 @@ describe('parse', () => {
       },
       {
         I: '0xFu',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'uint64Value',
                 value: BigInt(15),
@@ -166,11 +167,11 @@ describe('parse', () => {
       },
       {
         I: '-1',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'int64Value',
                 value: BigInt(-1),
@@ -181,18 +182,18 @@ describe('parse', () => {
       },
       {
         I: '4--4',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_-_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'constExpr',
-                    value: new Constant({
+                    value: create(ConstantSchema, {
                       constantKind: {
                         case: 'int64Value',
                         value: BigInt(4),
@@ -200,11 +201,11 @@ describe('parse', () => {
                     }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'constExpr',
-                    value: new Constant({
+                    value: create(ConstantSchema, {
                       constantKind: {
                         case: 'int64Value',
                         value: BigInt(-4),
@@ -219,18 +220,18 @@ describe('parse', () => {
       },
       {
         I: '4--4.1',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_-_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'constExpr',
-                    value: new Constant({
+                    value: create(ConstantSchema, {
                       constantKind: {
                         case: 'int64Value',
                         value: BigInt(4),
@@ -238,11 +239,11 @@ describe('parse', () => {
                     }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'constExpr',
-                    value: new Constant({
+                    value: create(ConstantSchema, {
                       constantKind: {
                         case: 'doubleValue',
                         value: -4.1,
@@ -257,11 +258,11 @@ describe('parse', () => {
       },
       {
         I: 'b"abc"',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'bytesValue',
                 value: new TextEncoder().encode('abc'),
@@ -272,11 +273,11 @@ describe('parse', () => {
       },
       {
         I: '23.39',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'doubleValue',
                 value: 23.39,
@@ -287,18 +288,18 @@ describe('parse', () => {
       },
       {
         I: '!a',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '!_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
               ],
@@ -308,11 +309,11 @@ describe('parse', () => {
       },
       {
         I: 'null',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'constExpr',
-            value: new Constant({
+            value: create(ConstantSchema, {
               constantKind: {
                 case: 'nullValue',
                 value: NullValue.NULL_VALUE,
@@ -323,42 +324,42 @@ describe('parse', () => {
       },
       {
         I: 'a',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'identExpr',
-            value: new Expr_Ident({ name: 'a' }),
+            value: create(Expr_IdentSchema, { name: 'a' }),
           },
         }),
       },
       {
         I: 'a?b:c',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_?_:_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(3),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(4),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'c' }),
+                    value: create(Expr_IdentSchema, { name: 'c' }),
                   },
                 }),
               ],
@@ -368,25 +369,25 @@ describe('parse', () => {
       },
       {
         I: 'a || b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_||_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -396,7 +397,7 @@ describe('parse', () => {
       },
       {
         I: 'a || b || c || d || e || f ',
-        P: Expr.fromJson({
+        P: fromJson(ExprSchema, {
           id: '4',
           callExpr: {
             function: '_||_',
@@ -475,25 +476,25 @@ describe('parse', () => {
       },
       {
         I: 'a && b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_&&_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -503,7 +504,7 @@ describe('parse', () => {
       },
       {
         I: 'a && b && c && d && e && f && g',
-        P: Expr.fromJson({
+        P: fromJson(ExprSchema, {
           id: '5',
           callExpr: {
             function: '_&&_',
@@ -596,7 +597,7 @@ describe('parse', () => {
       },
       {
         I: 'a && b && c && d || e && f && g && h',
-        P: Expr.fromJson({
+        P: fromJson(ExprSchema, {
           id: '7',
           callExpr: {
             function: '_||_',
@@ -703,25 +704,25 @@ describe('parse', () => {
       },
       {
         I: 'a + b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_+_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -731,25 +732,25 @@ describe('parse', () => {
       },
       {
         I: 'a - b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_-_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -759,25 +760,25 @@ describe('parse', () => {
       },
       {
         I: 'a * b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_*_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -787,25 +788,25 @@ describe('parse', () => {
       },
       {
         I: 'a / b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_/_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -815,25 +816,25 @@ describe('parse', () => {
       },
       {
         I: 'a % b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_%_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -843,25 +844,25 @@ describe('parse', () => {
       },
       {
         I: 'a in b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '@in',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -871,25 +872,25 @@ describe('parse', () => {
       },
       {
         I: 'a == b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_==_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -899,25 +900,25 @@ describe('parse', () => {
       },
       {
         I: 'a != b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_!=_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -927,25 +928,25 @@ describe('parse', () => {
       },
       {
         I: 'a > b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_>_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -955,25 +956,25 @@ describe('parse', () => {
       },
       {
         I: 'a >= b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_>=_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -983,25 +984,25 @@ describe('parse', () => {
       },
       {
         I: 'a < b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_<_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -1011,25 +1012,25 @@ describe('parse', () => {
       },
       {
         I: 'a <= b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_<=_',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -1039,16 +1040,16 @@ describe('parse', () => {
       },
       {
         I: 'a.b',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'selectExpr',
-            value: new Expr_Select({
-              operand: new Expr({
+            value: create(Expr_SelectSchema, {
+              operand: create(ExprSchema, {
                 id: BigInt(1),
                 exprKind: {
                   case: 'identExpr',
-                  value: new Expr_Ident({ name: 'a' }),
+                  value: create(Expr_IdentSchema, { name: 'a' }),
                 },
               }),
               field: 'b',
@@ -1058,21 +1059,21 @@ describe('parse', () => {
       },
       {
         I: 'a.b.c',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'selectExpr',
-            value: new Expr_Select({
-              operand: new Expr({
+            value: create(Expr_SelectSchema, {
+              operand: create(ExprSchema, {
                 id: BigInt(2),
                 exprKind: {
                   case: 'selectExpr',
-                  value: new Expr_Select({
-                    operand: new Expr({
+                  value: create(Expr_SelectSchema, {
+                    operand: create(ExprSchema, {
                       id: BigInt(1),
                       exprKind: {
                         case: 'identExpr',
-                        value: new Expr_Ident({ name: 'a' }),
+                        value: create(Expr_IdentSchema, { name: 'a' }),
                       },
                     }),
                     field: 'b',
@@ -1086,25 +1087,25 @@ describe('parse', () => {
       },
       {
         I: 'a[b]',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: '_[_]',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -1114,11 +1115,11 @@ describe('parse', () => {
       },
       {
         I: 'foo{ }',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'structExpr',
-            value: new Expr_CreateStruct({
+            value: create(Expr_CreateStructSchema, {
               messageName: 'foo',
             }),
           },
@@ -1126,24 +1127,24 @@ describe('parse', () => {
       },
       {
         I: 'foo{ a:b }',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'structExpr',
-            value: new Expr_CreateStruct({
+            value: create(Expr_CreateStructSchema, {
               messageName: 'foo',
               entries: [
-                new Expr_CreateStruct_Entry({
+                create(Expr_CreateStruct_EntrySchema, {
                   id: BigInt(2),
                   keyKind: {
                     case: 'fieldKey',
                     value: 'a',
                   },
-                  value: new Expr({
+                  value: create(ExprSchema, {
                     id: BigInt(1),
                     exprKind: {
                       case: 'identExpr',
-                      value: new Expr_Ident({ name: 'b' }),
+                      value: create(Expr_IdentSchema, { name: 'b' }),
                     },
                   }),
                 }),
@@ -1154,38 +1155,38 @@ describe('parse', () => {
       },
       {
         I: 'foo{ a:b, c:d }',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(5),
           exprKind: {
             case: 'structExpr',
-            value: new Expr_CreateStruct({
+            value: create(Expr_CreateStructSchema, {
               messageName: 'foo',
               entries: [
-                new Expr_CreateStruct_Entry({
+                create(Expr_CreateStruct_EntrySchema, {
                   id: BigInt(2),
                   keyKind: {
                     case: 'fieldKey',
                     value: 'a',
                   },
-                  value: new Expr({
+                  value: create(ExprSchema, {
                     id: BigInt(1),
                     exprKind: {
                       case: 'identExpr',
-                      value: new Expr_Ident({ name: 'b' }),
+                      value: create(Expr_IdentSchema, { name: 'b' }),
                     },
                   }),
                 }),
-                new Expr_CreateStruct_Entry({
+                create(Expr_CreateStruct_EntrySchema, {
                   id: BigInt(4),
                   keyKind: {
                     case: 'fieldKey',
                     value: 'c',
                   },
-                  value: new Expr({
+                  value: create(ExprSchema, {
                     id: BigInt(3),
                     exprKind: {
                       case: 'identExpr',
-                      value: new Expr_Ident({ name: 'd' }),
+                      value: create(Expr_IdentSchema, { name: 'd' }),
                     },
                   }),
                 }),
@@ -1196,59 +1197,59 @@ describe('parse', () => {
       },
       {
         I: '{}',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'structExpr',
-            value: new Expr_CreateStruct({}),
+            value: create(Expr_CreateStructSchema, {}),
           },
         }),
       },
       {
         I: '{a:b, c:d}',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(7),
           exprKind: {
             case: 'structExpr',
-            value: new Expr_CreateStruct({
+            value: create(Expr_CreateStructSchema, {
               entries: [
-                new Expr_CreateStruct_Entry({
+                create(Expr_CreateStruct_EntrySchema, {
                   id: BigInt(3),
                   keyKind: {
                     case: 'mapKey',
-                    value: new Expr({
+                    value: create(ExprSchema, {
                       id: BigInt(1),
                       exprKind: {
                         case: 'identExpr',
-                        value: new Expr_Ident({ name: 'a' }),
+                        value: create(Expr_IdentSchema, { name: 'a' }),
                       },
                     }),
                   },
-                  value: new Expr({
+                  value: create(ExprSchema, {
                     id: BigInt(2),
                     exprKind: {
                       case: 'identExpr',
-                      value: new Expr_Ident({ name: 'b' }),
+                      value: create(Expr_IdentSchema, { name: 'b' }),
                     },
                   }),
                 }),
-                new Expr_CreateStruct_Entry({
+                create(Expr_CreateStruct_EntrySchema, {
                   id: BigInt(6),
                   keyKind: {
                     case: 'mapKey',
-                    value: new Expr({
+                    value: create(ExprSchema, {
                       id: BigInt(4),
                       exprKind: {
                         case: 'identExpr',
-                        value: new Expr_Ident({ name: 'c' }),
+                        value: create(Expr_IdentSchema, { name: 'c' }),
                       },
                     }),
                   },
-                  value: new Expr({
+                  value: create(ExprSchema, {
                     id: BigInt(5),
                     exprKind: {
                       case: 'identExpr',
-                      value: new Expr_Ident({ name: 'd' }),
+                      value: create(Expr_IdentSchema, { name: 'd' }),
                     },
                   }),
                 }),
@@ -1259,27 +1260,27 @@ describe('parse', () => {
       },
       {
         I: '[]',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'listExpr',
-            value: new Expr_CreateList(),
+            value: create(Expr_CreateListSchema),
           },
         }),
       },
       {
         I: '[a]',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'listExpr',
-            value: new Expr_CreateList({
+            value: create(Expr_CreateListSchema, {
               elements: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
               ],
@@ -1289,31 +1290,31 @@ describe('parse', () => {
       },
       {
         I: '[a, b, c]',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(4),
           exprKind: {
             case: 'listExpr',
-            value: new Expr_CreateList({
+            value: create(Expr_CreateListSchema, {
               elements: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(1),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'a' }),
+                    value: create(Expr_IdentSchema, { name: 'a' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(3),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'c' }),
+                    value: create(Expr_IdentSchema, { name: 'c' }),
                   },
                 }),
               ],
@@ -1323,31 +1324,31 @@ describe('parse', () => {
       },
       {
         I: '(a)',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'identExpr',
-            value: new Expr_Ident({ name: 'a' }),
+            value: create(Expr_IdentSchema, { name: 'a' }),
           },
         }),
       },
       {
         I: '((a))',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'identExpr',
-            value: new Expr_Ident({ name: 'a' }),
+            value: create(Expr_IdentSchema, { name: 'a' }),
           },
         }),
       },
       {
         I: 'a()',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(1),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: 'a',
             }),
           },
@@ -1355,18 +1356,18 @@ describe('parse', () => {
       },
       {
         I: 'a(b)',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(3),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: 'a',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
               ],
@@ -1376,25 +1377,25 @@ describe('parse', () => {
       },
       {
         I: 'a(b, c)',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(4),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: 'a',
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(2),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'b' }),
+                    value: create(Expr_IdentSchema, { name: 'b' }),
                   },
                 }),
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(3),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'c' }),
+                    value: create(Expr_IdentSchema, { name: 'c' }),
                   },
                 }),
               ],
@@ -1404,17 +1405,17 @@ describe('parse', () => {
       },
       {
         I: 'a.b()',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(2),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: 'b',
-              target: new Expr({
+              target: create(ExprSchema, {
                 id: BigInt(1),
                 exprKind: {
                   case: 'identExpr',
-                  value: new Expr_Ident({ name: 'a' }),
+                  value: create(Expr_IdentSchema, { name: 'a' }),
                 },
               }),
             }),
@@ -1423,25 +1424,25 @@ describe('parse', () => {
       },
       {
         I: 'a.b(c)',
-        P: new Expr({
+        P: create(ExprSchema, {
           id: BigInt(4),
           exprKind: {
             case: 'callExpr',
-            value: new Expr_Call({
+            value: create(Expr_CallSchema, {
               function: 'b',
-              target: new Expr({
+              target: create(ExprSchema, {
                 id: BigInt(1),
                 exprKind: {
                   case: 'identExpr',
-                  value: new Expr_Ident({ name: 'a' }),
+                  value: create(Expr_IdentSchema, { name: 'a' }),
                 },
               }),
               args: [
-                new Expr({
+                create(ExprSchema, {
                   id: BigInt(3),
                   exprKind: {
                     case: 'identExpr',
-                    value: new Expr_Ident({ name: 'c' }),
+                    value: create(Expr_IdentSchema, { name: 'c' }),
                   },
                 }),
               ],

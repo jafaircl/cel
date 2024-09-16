@@ -1,5 +1,5 @@
-import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { EnumType, MessageType } from '@bufbuild/protobuf';
+import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import { Registry } from '@bufbuild/protobuf';
 import { CELEnvironment } from './environment';
 import { exprValueToNative } from './to-native';
 import { Binding } from './types';
@@ -11,13 +11,9 @@ export interface ParseOptions {
    */
   declarations?: Decl[];
   /**
-   * The message types to use for message type declarations.
+   * The type registry to use.
    */
-  messageTypes?: MessageType[];
-  /**
-   * The enum types to use for enum type declarations.
-   */
-  enumTypes?: EnumType[];
+  registry?: Registry;
   /**
    * A map of named values or functions to use for declarations.
    */
@@ -27,6 +23,10 @@ export interface ParseOptions {
    * expensive, so it is disabled by default.
    */
   check?: boolean;
+  /**
+   * The container namespace
+   */
+  container?: string;
 }
 
 /**
@@ -37,11 +37,11 @@ export interface ParseOptions {
  * @returns the result of the expression evaluation
  */
 export function parse(expr: string, options?: ParseOptions) {
-  const environment = new CELEnvironment(
-    options?.declarations ?? [],
-    options?.messageTypes ?? [],
-    options?.enumTypes ?? []
-  );
+  const environment = new CELEnvironment({
+    declarations: options?.declarations ?? [],
+    registry: options?.registry,
+    container: options?.container ?? '',
+  });
   const ast = environment.compile(
     expr,
     isNil(options?.check) ? false : options?.check
@@ -58,11 +58,11 @@ export function parse(expr: string, options?: ParseOptions) {
  * @returns the result of the expression evaluation as an ExprValue object
  */
 export function parseAndEval(expr: string, options?: ParseOptions) {
-  const environment = new CELEnvironment(
-    options?.declarations ?? [],
-    options?.messageTypes ?? [],
-    options?.enumTypes ?? []
-  );
+  const environment = new CELEnvironment({
+    declarations: options?.declarations ?? [],
+    registry: options?.registry,
+    container: options?.container ?? '',
+  });
   const ast = environment.compile(
     expr,
     isNil(options?.check) ? false : options?.check

@@ -9,8 +9,8 @@
   },
   "private": false,
   "dependencies": {
-    "@buf/google_cel-spec.bufbuild_es": "^1.6.0-20231211223032-f53499f1d3a9.1",
-    "@bufbuild/protobuf": "^1.6.0",
+    "@buf/google_cel-spec.bufbuild_es": "^2.0.0-20240829202630-b69910e4e9bc.2",
+    "@bufbuild/protobuf": "^2.0.0",
     "antlr4": "^4.13.1-patch-1"
   },
   "devDependencies": {

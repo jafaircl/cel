@@ -1,4 +1,8 @@
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import {
+  Expr,
+  ExprSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { create } from '@bufbuild/protobuf';
 
 export class ExpressionBalancer {
   private readonly fn!: string;
@@ -43,7 +47,7 @@ export class ExpressionBalancer {
     const right =
       mid === hi ? this.terms[mid + 1] : this.balanceRecursive(mid + 1, hi);
 
-    return new Expr({
+    return create(ExprSchema, {
       id: BigInt(this.ids[mid]),
       exprKind: {
         case: 'callExpr',

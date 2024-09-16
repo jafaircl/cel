@@ -1,11 +1,12 @@
-import { SimpleTestFile } from '@buf/google_cel-spec.bufbuild_es/cel/expr/conformance/simple_pb.js';
+import { SimpleTestFileSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/conformance/simple_pb.js';
+import { fromJsonString } from '@bufbuild/protobuf';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { runTest } from './runner';
 
 describe('basic', () => {
   const file = readFileSync(join(__dirname, '..', 'testdata', 'basic.json'));
-  const testFile = SimpleTestFile.fromJsonString(file.toString(), {
+  const testFile = fromJsonString(SimpleTestFileSchema, file.toString(), {
     ignoreUnknownFields: true,
   });
   runTest(testFile);
