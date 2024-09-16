@@ -590,7 +590,7 @@ export function index(list: Value, index: Value): Value {
     throw new Error('no_such_overload');
   }
   if (index.kind.case === 'doubleValue' && index.kind.value % 1 !== 0) {
-    throw new Error('invalid argument');
+    throw new Error('invalid_argument');
   }
   for (let i = 0; i < list.kind.value.values.length; i++) {
     switch (index.kind.case) {

@@ -3,6 +3,7 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "parser/src",
   "projectType": "library",
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/vite:build",
@@ -24,8 +25,7 @@
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"]
+      "executor": "@nx/eslint:lint"
     },
     "prepare-conformance": {
       "executor": "nx:run-commands",
@@ -42,6 +42,5 @@
         "config": "parser/vite.conformance.config.ts"
       }
     }
-  },
-  "tags": []
+  }
 }
